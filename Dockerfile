@@ -25,10 +25,14 @@ COPY apps/api ./
 RUN uv sync --frozen --no-dev
 COPY --from=web /src/apps/web/dist /app/web
 
+# The same image runs in dev and pro; VGT_ENVIRONMENT is set by the deployment.
+ARG VGT_RELEASE=unknown
 ENV PATH=/app/venv/bin:$PATH \
+    VGT_RELEASE=$VGT_RELEASE \
     VGT_WEB_DIST=/app/web \
     VGT_DATABASE_URL=sqlite:////data/vgt.db \
     VGT_MEDIA_DIR=/data/media \
+    VGT_BACKUP_DIR=/data/backups \
     VGT_COOKIE_SECURE=true
 RUN useradd --system --uid 10001 vgt && mkdir -p /data && chown vgt /data
 USER vgt
@@ -36,4 +40,4 @@ VOLUME /data
 EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health')"
-CMD ["sh", "-c", "vgt migrate && exec uvicorn vgt.main:app --host 0.0.0.0 --port 8000 --proxy-headers --forwarded-allow-ips='*'"]
+CMD ["vgt", "serve"]

@@ -8,6 +8,7 @@ export const nl = {
     name: "VGT oefenen",
     tagline: "Oefen de gebaren uit je les Vlaamse Gebarentaal.",
     skipToContent: "Naar de inhoud",
+    devBanner: "Testomgeving (DEV): gegevens hier kunnen verdwijnen.",
     loading: "Laden…",
     error: "Er ging iets mis.",
     retry: "Opnieuw proberen",

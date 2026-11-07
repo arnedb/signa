@@ -89,3 +89,32 @@ def test_demo_seed(db: Session) -> None:
     assert counts["words"] == sum(len(v) for v in DEMO_WORDS.values())
     assert counts["users"] == 3
     assert seed_demo(db)["words"] == 0
+
+
+def test_backup_keeps_newest(db: Session, tmp_path: Path, monkeypatch) -> None:
+    import os
+
+    from vgt.backup import backup
+
+    monkeypatch.setenv("VGT_BACKUP_DIR", str(tmp_path / "backups"))
+    get_settings.cache_clear()
+    db.add(Word(gloss="huis", year=1))
+    db.commit()
+    paths = []
+    for i in range(3):
+        p = backup(f"t{i}", keep=2)
+        assert p is not None
+        os.utime(p, (1000 + i, 1000 + i))
+        paths.append(p)
+    left = sorted((tmp_path / "backups").glob("*.db"))
+    assert len(left) == 2 and paths[0] not in left
+    con = sqlite3.connect(paths[-1])
+    assert con.execute("select gloss from words").fetchone() == ("huis",)
+
+
+def test_health_reports_environment(app_client, monkeypatch) -> None:
+    monkeypatch.setenv("VGT_ENVIRONMENT", "dev")
+    monkeypatch.setenv("VGT_RELEASE", "abc123")
+    get_settings.cache_clear()
+    body = app_client.get("/api/v1/health").json()
+    assert body["environment"] == "dev" and body["release"] == "abc123"

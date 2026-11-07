@@ -66,21 +66,19 @@ make api-client            # after changing the API: regenerate the TypeScript c
 
 ## Deploying
 
-`docker build` makes one image. `compose.yaml` runs it behind Traefik with a `/data` volume
-for the database and the videos. CI (lint, types, tests, end-to-end, image smoke test) runs on
-every push; `.github/workflows/deploy.yml` deploys only after CI passed on `main`. Secrets live
-in GitHub secrets and the server `.env`, never in this repository.
+Two environments run the same image, each behind Traefik with its own database and videos:
 
-First admin on the server:
+- **DEV**: every commit on `main` is deployed automatically once CI passed.
+- **PRO**: publish a GitHub release (or `make deploy-pro REF=<tag or sha>`) and approve.
+  PRO only accepts an image that already ran in DEV; it is never rebuilt.
 
-```bash
-docker compose exec vgt vgt create-admin <username>
-```
+Each deploy backs up the database, waits for the health check and rolls back if the new
+version does not start. Setup, secrets, backups and restores: [docs/DEPLOY.md](docs/DEPLOY.md).
 
-Import the old app (try it on a copy first):
+Import the old app into PRO (try it in DEV or on a copy first):
 
 ```bash
-docker compose exec vgt vgt import-legacy /data/legacy/lexicon.db /data/legacy/videos --dry-run
+docker compose -p vgt-pro --env-file .env.pro exec vgt vgt import-legacy /data/legacy/lexicon.db /data/legacy/videos --dry-run
 ```
 
 ## License

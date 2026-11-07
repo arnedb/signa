@@ -76,9 +76,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: docker build -t vgt-practice:ci .
+      - run: docker build --build-arg VGT_RELEASE=${{ github.sha }} -t vgt-practice:ci .
       - name: Smoke test the image
         run: |
-          docker run -d --name vgt -p 8000:8000 -e VGT_COOKIE_SECURE=false vgt-practice:ci
-          for i in $(seq 1 30); do curl -fs localhost:8000/api/v1/health && break; sleep 1; done
+          docker run -d --name vgt -p 8000:8000 -e VGT_ENVIRONMENT=dev -e VGT_SEED_DEMO=true vgt-practice:ci
+          for i in $(seq 1 60); do curl -fs localhost:8000/api/v1/health && break; sleep 2; done
+          curl -fs localhost:8000/api/v1/health | jq -e '.environment == "dev" and .release == "${{ github.sha }}"'
+          docker exec vgt vgt backup
           curl -fs localhost:8000/ | grep -q '<div id="root">'

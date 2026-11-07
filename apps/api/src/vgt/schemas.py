@@ -16,6 +16,13 @@ Weekday = Literal["maandag", "dinsdag", "woensdag", "donderdag", "vrijdag", "zat
 ClipMode = Literal["replace", "extra"]
 
 
+class HealthOut(BaseModel):
+    status: Literal["ok"]
+    version: str
+    release: str
+    environment: Literal["local", "dev", "pro"]
+
+
 class ORM(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

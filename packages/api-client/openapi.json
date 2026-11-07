@@ -2135,11 +2135,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": {
-                    "type": "string"
-                  },
-                  "type": "object",
-                  "title": "Response Health"
+                  "$ref": "#/components/schemas/HealthOut"
                 }
               }
             }
@@ -2744,6 +2740,40 @@
         },
         "type": "object",
         "title": "HTTPValidationError"
+      },
+      "HealthOut": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "const": "ok",
+            "title": "Status"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version"
+          },
+          "release": {
+            "type": "string",
+            "title": "Release"
+          },
+          "environment": {
+            "type": "string",
+            "enum": [
+              "local",
+              "dev",
+              "pro"
+            ],
+            "title": "Environment"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "version",
+          "release",
+          "environment"
+        ],
+        "title": "HealthOut"
       },
       "InviteOut": {
         "properties": {

@@ -1,4 +1,4 @@
-"""Command line: ``vgt create-admin``, ``vgt migrate``, ``vgt import-legacy``, ``vgt demo``."""
+"""The `vgt` command: serve, migrate, create-admin, backup, import-legacy, demo, openapi."""
 
 import argparse
 import getpass
@@ -49,6 +49,32 @@ def create_admin(username: str, password: str | None) -> None:
         db.commit()
 
 
+def serve(host: str, port: int) -> None:
+    import uvicorn
+
+    from vgt.config import get_settings
+
+    settings = get_settings()
+    migrate()
+    if settings.seed_demo:
+        if settings.environment == "pro":
+            sys.exit("VGT_SEED_DEMO is not allowed in the pro environment")
+        from vgt.demo import seed_demo
+        from vgt.models import Word
+
+        with session_factory()() as db:
+            if db.scalar(select(func.count()).select_from(Word)) == 0:
+                print(f"Demo data: {seed_demo(db)}")
+    uvicorn.run(
+        "vgt.main:app",
+        host=host,
+        port=port,
+        proxy_headers=True,
+        forwarded_allow_ips="*",
+        log_level="info",
+    )
+
+
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(prog="vgt")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -71,6 +97,14 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--clips", type=Path, help="Folder with <gloss>.mp4 demo clips")
 
     sub.add_parser("openapi", help="Print the OpenAPI schema as JSON")
+
+    p = sub.add_parser("serve", help="Migrate, seed demo data if VGT_SEED_DEMO, then serve")
+    p.add_argument("--host", default="0.0.0.0")
+    p.add_argument("--port", type=int, default=8000)
+
+    p = sub.add_parser("backup", help="Back up the database (safe while running)")
+    p.add_argument("--label", default="manual")
+    p.add_argument("--keep", type=int, help="Copies to keep (default VGT_BACKUP_KEEP)")
 
     args = parser.parse_args(argv)
     match args.command:
@@ -106,6 +140,13 @@ def main(argv: list[str] | None = None) -> None:
                 f"Demo data: {counts}. Log in as admin/demo-admin, docent/demo-docent or "
                 "student/demo-student. Invite code: demo"
             )
+        case "serve":
+            serve(args.host, args.port)
+        case "backup":
+            from vgt.backup import backup
+
+            path = backup(args.label, args.keep)
+            print(f"Backup written to {path}" if path else "No database yet, nothing to back up.")
         case "openapi":
             from vgt.main import create_app
 

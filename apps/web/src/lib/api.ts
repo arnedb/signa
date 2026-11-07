@@ -27,6 +27,12 @@ export const meQuery = queryOptions({
   staleTime: 5 * 60_000,
 });
 
+export const healthQuery = queryOptions({
+  queryKey: ["health"],
+  queryFn: () => unwrap(api.GET("/api/v1/health")),
+  staleTime: Infinity,
+});
+
 export const catalogQuery = queryOptions({
   queryKey: ["catalog"],
   queryFn: () => unwrap(api.GET("/api/v1/catalog")),

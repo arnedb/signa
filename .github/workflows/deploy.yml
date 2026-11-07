@@ -1,45 +1,164 @@
 name: Deploy
 
-# Deploys only after CI passed on main.
+# Two environments, one image:
+#   dev  every commit on main, automatically, once CI passed (image built and tagged :dev)
+#   pro  on a published GitHub release, or by hand (Actions → Deploy → Run workflow).
+#        Pro never builds: it promotes the exact image that was built for dev.
+# Both check that CI passed for the commit. Approval for pro is set on the "pro" environment.
 on:
   workflow_run:
     workflows: [CI]
     types: [completed]
     branches: [main]
+  release:
+    types: [published]
   workflow_dispatch:
+    inputs:
+      environment:
+        description: Where to deploy
+        type: choice
+        options: [dev, pro]
+        default: dev
+      ref:
+        description: "Commit SHA or tag (default: latest main)"
+        required: false
 
 permissions:
   contents: read
   packages: write
+  actions: read
 
 jobs:
-  deploy:
-    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+  resolve:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
-    environment: test
+    outputs:
+      environment: ${{ steps.r.outputs.environment }}
+      sha: ${{ steps.r.outputs.sha }}
+      image: ${{ steps.r.outputs.image }}
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          fetch-depth: 0
+      - id: r
+        name: Resolve environment, commit and image
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+          RUN_SHA: ${{ github.event.workflow_run.head_sha }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          INPUT_ENV: ${{ inputs.environment }}
+          INPUT_REF: ${{ inputs.ref }}
+        run: |
+          case "$EVENT" in
+            workflow_run) environment=dev; ref="$RUN_SHA" ;;
+            release)      environment=pro; ref="$RELEASE_TAG" ;;
+            *)            environment="$INPUT_ENV"; ref="${INPUT_REF:-origin/main}" ;;
+          esac
+          sha="$(git rev-parse --verify "$ref^{commit}")"
+          if ! git merge-base --is-ancestor "$sha" origin/main; then
+            echo "::error::$sha is not on main; only main is deployed"; exit 1
+          fi
+          passed="$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?head_sha=$sha&status=success" --jq .total_count)"
+          if [ "$passed" = 0 ]; then
+            echo "::error::CI has not passed for $sha"; exit 1
+          fi
+          image="ghcr.io/${GITHUB_REPOSITORY,,}"
+          echo "environment=$environment" >> "$GITHUB_OUTPUT"
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "image=$image" >> "$GITHUB_OUTPUT"
+          echo "Deploying $sha to $environment" >> "$GITHUB_STEP_SUMMARY"
+
+  image:
+    needs: resolve
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.resolve.outputs.sha }}
+      - uses: docker/setup-buildx-action@v3
       - uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - uses: docker/build-push-action@v6
+      - name: Check for an existing image
+        id: exists
+        run: |
+          if docker buildx imagetools inspect "${{ needs.resolve.outputs.image }}:${{ needs.resolve.outputs.sha }}" >/dev/null 2>&1; then
+            echo "found=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "found=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Pro only gets images that were built for dev
+        if: needs.resolve.outputs.environment == 'pro' && steps.exists.outputs.found != 'true'
+        run: |
+          echo "::error::No image for ${{ needs.resolve.outputs.sha }}. Deploy this commit to dev first."
+          exit 1
+      - name: Build (dev)
+        if: steps.exists.outputs.found != 'true'
+        uses: docker/build-push-action@v6
         with:
           push: true
-          tags: |
-            ghcr.io/${{ github.repository }}:latest
-            ghcr.io/${{ github.repository }}:${{ github.event.workflow_run.head_sha || github.sha }}
-      - name: Pull and restart on the server
-        uses: appleboy/ssh-action@v1
+          build-args: VGT_RELEASE=${{ needs.resolve.outputs.sha }}
+          tags: ${{ needs.resolve.outputs.image }}:${{ needs.resolve.outputs.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Tag as ${{ needs.resolve.outputs.environment }}
+        run: |
+          docker buildx imagetools create \
+            -t "${{ needs.resolve.outputs.image }}:${{ needs.resolve.outputs.environment }}" \
+            "${{ needs.resolve.outputs.image }}:${{ needs.resolve.outputs.sha }}"
+
+  deploy:
+    needs: [resolve, image]
+    runs-on: ubuntu-latest
+    # Secrets, variables and protection rules (e.g. required reviewers for pro) come from here.
+    environment:
+      name: ${{ needs.resolve.outputs.environment }}
+      url: https://${{ vars.VGT_HOST }}
+    concurrency:
+      group: deploy-${{ needs.resolve.outputs.environment }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
         with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USER }}
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
-          script: |
-            cd ${{ secrets.DEPLOY_PATH }}
-            docker compose pull
-            docker compose up -d
-            docker image prune -f
+          ref: ${{ needs.resolve.outputs.sha }}
+      - name: Set up SSH
+        env:
+          KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$KEY" > ~/.ssh/id_deploy && chmod 600 ~/.ssh/id_deploy
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+      - name: Copy the compose file and deploy script
+        env:
+          TARGET: ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+        run: |
+          ssh -i ~/.ssh/id_deploy "$TARGET" "mkdir -p '$DEPLOY_PATH'"
+          scp -i ~/.ssh/id_deploy compose.yaml deploy/deploy.sh deploy/env.dev.example deploy/env.pro.example \
+            "$TARGET:$DEPLOY_PATH/"
+      - name: Deploy
+        env:
+          TARGET: ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+          ENVIRONMENT: ${{ needs.resolve.outputs.environment }}
+          IMAGE: ${{ needs.resolve.outputs.image }}:${{ needs.resolve.outputs.sha }}
+        run: ssh -i ~/.ssh/id_deploy "$TARGET" "bash '$DEPLOY_PATH/deploy.sh' '$ENVIRONMENT' '$IMAGE'"
+      - name: Check the public URL
+        env:
+          URL: https://${{ vars.VGT_HOST }}/api/v1/health
+          SHA: ${{ needs.resolve.outputs.sha }}
+          ENVIRONMENT: ${{ needs.resolve.outputs.environment }}
+        run: |
+          for i in $(seq 1 20); do
+            body="$(curl -fsS "$URL" || true)"
+            if echo "$body" | jq -e --arg sha "$SHA" --arg env "$ENVIRONMENT" \
+                '.release == $sha and .environment == $env' >/dev/null 2>&1; then
+              echo "$body"; exit 0
+            fi
+            sleep 3
+          done
+          echo "::error::$URL does not report $SHA in $ENVIRONMENT: $body"; exit 1

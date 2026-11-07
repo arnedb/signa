@@ -1,25 +1,40 @@
-# Production-style setup behind Traefik. Copy .env.example to .env on the server.
+# One file for both deployments. Each runs as its own Compose project with its own env file,
+# so dev and pro have separate containers, volumes (database + videos) and Traefik routers,
+# even on the same server:
+#
+#   docker compose -p vgt-dev --env-file .env.dev up -d
+#   docker compose -p vgt-pro --env-file .env.pro up -d
+#
+# deploy/deploy.sh does this (with a backup, a health check and a rollback).
 services:
   vgt:
-    image: ${VGT_IMAGE:-ghcr.io/arnedb/vgt-practice:latest}
+    image: ${VGT_IMAGE:?set VGT_IMAGE in the env file}
     restart: unless-stopped
-    env_file: .env
+    environment:
+      VGT_ENVIRONMENT: ${VGT_ENVIRONMENT:?set VGT_ENVIRONMENT to dev or pro}
+      VGT_SEED_DEMO: ${VGT_SEED_DEMO:-false}
+      VGT_COOKIE_SECURE: ${VGT_COOKIE_SECURE:-true}
+      VGT_SESSION_DAYS: ${VGT_SESSION_DAYS:-30}
+      VGT_MAX_UPLOAD_MB: ${VGT_MAX_UPLOAD_MB:-2048}
+      VGT_BACKUP_KEEP: ${VGT_BACKUP_KEEP:-14}
     volumes:
-      - vgt-data:/data
+      - data:/data
     networks: [traefik]
     labels:
       - traefik.enable=true
-      - traefik.http.routers.vgt.rule=Host(`${VGT_HOST:-vgt.arnedb.be}`)
-      - traefik.http.routers.vgt.entrypoints=websecure
-      - traefik.http.routers.vgt.tls.certresolver=letsencrypt
-      - traefik.http.services.vgt.loadbalancer.server.port=8000
+      - traefik.docker.network=${TRAEFIK_NETWORK:-traefik}
+      - traefik.http.routers.vgt-${VGT_ENVIRONMENT}.rule=Host(`${VGT_HOST:?set VGT_HOST}`)
+      - traefik.http.routers.vgt-${VGT_ENVIRONMENT}.entrypoints=${TRAEFIK_ENTRYPOINT:-websecure}
+      - traefik.http.routers.vgt-${VGT_ENVIRONMENT}.tls.certresolver=${TRAEFIK_CERTRESOLVER:-letsencrypt}
+      - traefik.http.routers.vgt-${VGT_ENVIRONMENT}.middlewares=vgt-${VGT_ENVIRONMENT}-upload
+      - traefik.http.services.vgt-${VGT_ENVIRONMENT}.loadbalancer.server.port=8000
       # Recording sessions are long videos.
-      - traefik.http.middlewares.vgt-upload.buffering.maxRequestBodyBytes=2147483648
-      - traefik.http.routers.vgt.middlewares=vgt-upload
+      - traefik.http.middlewares.vgt-${VGT_ENVIRONMENT}-upload.buffering.maxRequestBodyBytes=2147483648
 
 volumes:
-  vgt-data:
+  data:
 
 networks:
   traefik:
+    name: ${TRAEFIK_NETWORK:-traefik}
     external: true

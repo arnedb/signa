@@ -1,5 +1,6 @@
 from functools import lru_cache
 from pathlib import Path
+from typing import Literal
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -9,7 +10,15 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(env_prefix="VGT_", env_file=".env", extra="ignore")
 
+    # "dev" and "pro" are the two deployments; "local" is a developer machine.
+    environment: Literal["local", "dev", "pro"] = "local"
+    # The git commit the image was built from (set by the Docker build).
+    release: str = "local"
+    # Fill an empty database with demo users and words at startup (dev only).
+    seed_demo: bool = False
     database_url: str = "sqlite:///./data/vgt.db"
+    backup_dir: Path = Path("./data/backups")
+    backup_keep: int = 14
     media_dir: Path = Path("./data/media")
     web_dist: Path | None = None
     session_days: int = 30

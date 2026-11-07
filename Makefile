@@ -1,4 +1,4 @@
-.PHONY: install dev api web test lint typecheck build api-client docker demo e2e
+.PHONY: install dev api web test lint typecheck build api-client docker demo e2e deploy-dev deploy-pro
 
 DEMO_URL ?= https://github.com/arnedb/vgt-practice/releases/download/demo-media-v1/demo-media.tar.gz
 
@@ -38,7 +38,15 @@ api-client:
 	pnpm api-client
 
 docker:
-	docker build -t vgt-practice .
+	docker build --build-arg VGT_RELEASE=$$(git rev-parse HEAD) -t vgt-practice .
+
+# Start the Deploy workflow on GitHub (needs the gh CLI). REF defaults to the latest main.
+REF ?=
+deploy-dev:
+	gh workflow run deploy.yml -f environment=dev $(if $(REF),-f ref=$(REF))
+
+deploy-pro:
+	gh workflow run deploy.yml -f environment=pro $(if $(REF),-f ref=$(REF))
 
 # Download the demo videos (release asset, CC BY-NC-ND 4.0) and fill a demo database.
 # Without the download, generated test clips are used.

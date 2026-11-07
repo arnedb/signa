@@ -19,6 +19,7 @@ from vgt.routers import (
     recordings,
     words,
 )
+from vgt.schemas import HealthOut
 
 
 def _operation_id(route: APIRoute) -> str:
@@ -31,9 +32,12 @@ def build_api() -> APIRouter:
     for module in (auth, me, words, media, admin_words, recordings, admin_groups, admin_users):
         api.include_router(module.router)
 
-    @api.get("/health", tags=["meta"])
-    def health() -> dict[str, str]:
-        return {"status": "ok", "version": __version__}
+    @api.get("/health", tags=["meta"], response_model=HealthOut)
+    def health() -> HealthOut:
+        s = get_settings()
+        return HealthOut(
+            status="ok", version=__version__, release=s.release, environment=s.environment
+        )
 
     return api
 

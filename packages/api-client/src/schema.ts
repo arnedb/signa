@@ -982,6 +982,23 @@ export interface components {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
         };
+        /** HealthOut */
+        HealthOut: {
+            /**
+             * Status
+             * @constant
+             */
+            status: "ok";
+            /** Version */
+            version: string;
+            /** Release */
+            release: string;
+            /**
+             * Environment
+             * @enum {string}
+             */
+            environment: "local" | "dev" | "pro";
+        };
         /** InviteOut */
         InviteOut: {
             group: components["schemas"]["GroupBrief"];
@@ -2838,9 +2855,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: string;
-                    };
+                    "application/json": components["schemas"]["HealthOut"];
                 };
             };
         };

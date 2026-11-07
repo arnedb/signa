@@ -23,7 +23,9 @@ tests/             pytest (needs ffmpeg on PATH)
 ## Commands
 
 ```bash
+uv run vgt serve                          # migrate (+ demo data if VGT_SEED_DEMO), then serve
 uv run vgt migrate                        # create / upgrade the database
+uv run vgt backup [--label x] [--keep n]  # consistent copy of the database
 uv run vgt create-admin <username>        # the first admin (asks for a password)
 uv run vgt import-legacy lexicon.db videos/ --dry-run
 uv run vgt import-legacy lexicon.db videos/ --report import-report.md
@@ -35,7 +37,11 @@ uv run vgt openapi > openapi.json
 
 | Variable | Default | |
 |---|---|---|
+| `VGT_ENVIRONMENT` | `local` | `dev` or `pro` in the deployments; shown by `/api/v1/health` |
+| `VGT_RELEASE` | `local` | git commit, set by the Docker build |
+| `VGT_SEED_DEMO` | `false` | demo data into an empty database at startup (refused in `pro`) |
 | `VGT_DATABASE_URL` | `sqlite:///./data/vgt.db` | |
+| `VGT_BACKUP_DIR`, `VGT_BACKUP_KEEP` | `./data/backups`, `14` | `vgt backup` |
 | `VGT_MEDIA_DIR` | `./data/media` | clips, thumbnails, recordings. Never in git |
 | `VGT_WEB_DIST` | — | folder with the built web app to serve |
 | `VGT_COOKIE_SECURE` | `false` | `true` behind HTTPS |
