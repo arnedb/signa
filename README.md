@@ -1,13 +1,92 @@
 # vgt-practice
 
 A practice tool for students of Flemish Sign Language (Vlaamse Gebarentaal, VGT):
-practise signs from your course, by year, lesson or list.
+practise the signs from your course, by year, lesson or list.
 
-Work in progress. See [docs/PLAN.md](docs/PLAN.md) for the plan and roadmap.
+- **Students** join their group with an invite link, practise in both directions
+  (word → sign, sign → word) with “Kende ik” / “Kende ik niet”, repeat what they missed,
+  browse the dictionary and practise their difficult words. No email, no real name.
+- **Teachers** manage the word list with drafts, history and undo, upload clips, and record
+  whole lessons at once: the app splits a long video on the pauses, the teacher matches each
+  part to a word and chooses to replace the old clip or add an extra one.
+- **Groups** are a course year plus a weekday (“Jaar 1 · dinsdag”). Teachers move students
+  between groups, one by one or a whole group at the start of the year. Every move is logged.
+
+See [docs/PLAN.md](docs/PLAN.md) for the plan and roadmap.
+
+## Architecture
+
+```
+apps/api              FastAPI · SQLAlchemy 2.0 · Alembic · SQLite · ffmpeg
+apps/web              React 19 · Vite · TanStack Router + Query · Tailwind v4 (students + /admin)
+apps/mobile           Expo, placeholder until milestone 9
+packages/api-client   TypeScript client generated from the OpenAPI schema
+packages/core         shared logic: deck building, practice session reducer, Dutch UI text
+```
+
+```mermaid
+flowchart LR
+  subgraph Clients
+    W[Web app<br/>React] --- C[packages/core]
+    M[Mobile app<br/>Expo, later] --- C
+    W --- AC[packages/api-client]
+    M --- AC
+  end
+  AC -- "cookie (web) / Bearer (mobile)" --> T[Traefik] --> A
+  subgraph Container
+    A[FastAPI<br/>/api/v1 · /api/v1/media · web app] --> DB[(SQLite)]
+    A --> J[Job worker] --> F[ffmpeg]
+    A --> V[/media volume/]
+    F --> V
+  end
+```
+
+One container serves the API, the protected videos (with range requests) and the built web
+app. A worker thread in the same process converts uploads and splits recordings.
+
+## Development
+
+Needs Python 3.12+, [uv](https://docs.astral.sh/uv/), Node 22, pnpm and ffmpeg.
+
+```bash
+make install
+make demo        # demo users, group and words
+make api         # http://localhost:8000 (API docs at /api/docs)
+make web         # http://localhost:5173, proxies /api to :8000
+```
+
+Demo logins: `student` / `demo-student`, `docent` / `demo-docent`, `admin` / `demo-admin`.
+Invite link: `http://localhost:5173/join/demo`.
+
+```bash
+make lint typecheck test   # ruff, pyright, pytest, eslint, tsc, vitest
+make e2e                   # Playwright, against a fresh demo database
+make api-client            # after changing the API: regenerate the TypeScript client
+```
+
+## Deploying
+
+`docker build` makes one image. `compose.yaml` runs it behind Traefik with a `/data` volume
+for the database and the videos. CI (lint, types, tests, end-to-end, image smoke test) runs on
+every push; `.github/workflows/deploy.yml` deploys only after CI passed on `main`. Secrets live
+in GitHub secrets and the server `.env`, never in this repository.
+
+First admin on the server:
+
+```bash
+docker compose exec vgt vgt create-admin <username>
+```
+
+Import the old app (try it on a copy first):
+
+```bash
+docker compose exec vgt vgt import-legacy /data/legacy/lexicon.db /data/legacy/videos --dry-run
+```
 
 ## License
 
 The code is licensed under the [GNU Affero General Public License v3.0](LICENSE).
 
 The sign videos used in class are not part of this repository and are not covered by this
-license. They belong to the teacher or school.
+license. They belong to the teacher or school. The demo videos are published separately as a
+release asset under CC BY-NC-ND 4.0.

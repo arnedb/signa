@@ -1,0 +1,25 @@
+# Production-style setup behind Traefik. Copy .env.example to .env on the server.
+services:
+  vgt:
+    image: ${VGT_IMAGE:-ghcr.io/arnedb/vgt-practice:latest}
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - vgt-data:/data
+    networks: [traefik]
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.vgt.rule=Host(`${VGT_HOST:-vgt.arnedb.be}`)
+      - traefik.http.routers.vgt.entrypoints=websecure
+      - traefik.http.routers.vgt.tls.certresolver=letsencrypt
+      - traefik.http.services.vgt.loadbalancer.server.port=8000
+      # Recording sessions are long videos.
+      - traefik.http.middlewares.vgt-upload.buffering.maxRequestBodyBytes=2147483648
+      - traefik.http.routers.vgt.middlewares=vgt-upload
+
+volumes:
+  vgt-data:
+
+networks:
+  traefik:
+    external: true
