@@ -221,7 +221,7 @@ function Clips({ word }: { word: AdminWord }) {
           className="flex flex-col gap-3 rounded-lg border border-dashed p-4"
           onSubmit={(e) => { e.preventDefault(); if (file) upload.mutate(); }}
         >
-          <Field label={t.admin.uploadClip}>
+          <Field label={t.admin.videoFile}>
             {(p) => (
               <Input {...p} type="file" accept="video/*" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
             )}

@@ -59,7 +59,7 @@ export function RecordingsPage() {
         </CardHeader>
         <CardContent>
           <form className="flex flex-col gap-3 sm:flex-row sm:items-end" onSubmit={(e) => { e.preventDefault(); if (file) upload.mutate(); }}>
-            <Field label={t.admin.uploadRecording} className="flex-1">
+            <Field label={t.admin.videoFile} className="flex-1">
               {(p) => <Input {...p} type="file" accept="video/*" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />}
             </Field>
             <Button type="submit" disabled={!file || upload.isPending}>
@@ -327,7 +327,7 @@ function SegmentRow({
           </p>
           <div className="flex gap-1">
             <Button size="sm" variant="secondary" onClick={onPlay}>
-              <Play aria-hidden /> {t.admin.newClip}
+              <Play aria-hidden /> {t.admin.playSegment}
             </Button>
             <Button size="sm" variant="ghost" onClick={onRemove} aria-label={t.admin.removeSegment}>
               <Trash2 aria-hidden />
