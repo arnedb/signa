@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.ruff_cache/
+
+# Node
+node_modules/
+dist/
+*.tsbuildinfo
+playwright-report/
+test-results/
+
+# Local data: databases and class videos never go in the repository
+data/
+*.db
+*.db-shm
+*.db-wal
+import-report.*
+.env
+demo-media/
