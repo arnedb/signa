@@ -1,0 +1,86 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  api:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - run: uv sync --frozen
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+      - run: uv run pyright
+      - run: uv run pytest
+
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: astral-sh/setup-uv@v6
+      - run: pnpm install --frozen-lockfile
+      - name: API client is up to date with the API
+        run: |
+          (cd apps/api && uv sync --frozen)
+          pnpm api-client
+          git diff --exit-code packages/api-client
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
+
+  e2e:
+    needs: [api, web]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: astral-sh/setup-uv@v6
+      - run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - run: pnpm install --frozen-lockfile
+      - run: cd apps/api && uv sync --frozen
+      - run: pnpm --filter @vgt/web exec playwright install --with-deps chromium
+      - run: pnpm build
+      - run: pnpm --filter @vgt/web e2e
+        env:
+          CI: "1"
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: apps/web/playwright-report
+
+  docker:
+    needs: [api, web]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build --build-arg VGT_RELEASE=${{ github.sha }} -t vgt-practice:ci .
+      - name: Smoke test the image
+        run: |
+          docker run -d --name vgt -p 8000:8000 -e VGT_ENVIRONMENT=dev -e VGT_SEED_DEMO=true vgt-practice:ci
+          for i in $(seq 1 60); do curl -fs localhost:8000/api/v1/health && break; sleep 2; done
+          curl -fs localhost:8000/api/v1/health | jq -e '.environment == "dev" and .release == "${{ github.sha }}"'
+          docker exec vgt vgt backup
+          curl -fs localhost:8000/ | grep -q '<div id="root">'
