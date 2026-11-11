@@ -8,13 +8,15 @@ src/vgt/
   config.py        settings from VGT_* environment variables
   models.py        database tables
   schemas.py       request and response models (these become the TypeScript client)
-  deps.py          sessions (cookie or Bearer), CSRF header check, role checks
+  deps.py          sessions (cookie or Bearer), CSRF header check, school + role checks
   routers/         one module per area: auth, me, words, media, admin_*
-  services/        word changes + audit log + undo, sessions
+  services/        word changes + audit log + undo, sessions, current school and group,
+                   school and group membership
   jobs.py          database job queue + worker thread (clip uploads, recording sessions)
   media.py         ffmpeg: standard encoding, thumbnails, auto-split with freezedetect
   legacy.py        import of the old app's lexicon.db and videos
-  demo.py          demo users, group and words
+  languages.py     the sign languages a school can teach
+  demo.py          demo schools, users, groups and words
   cli.py           the `vgt` command
 migrations/        Alembic
 tests/             pytest (needs ffmpeg on PATH)
@@ -26,9 +28,11 @@ tests/             pytest (needs ffmpeg on PATH)
 uv run vgt serve                          # migrate (+ demo data if VGT_SEED_DEMO), then serve
 uv run vgt migrate                        # create / upgrade the database
 uv run vgt backup [--label x] [--keep n]  # consistent copy of the database
-uv run vgt create-admin <username>        # the first admin (asks for a password)
-uv run vgt import-legacy lexicon.db videos/ --dry-run
-uv run vgt import-legacy lexicon.db videos/ --report import-report.md
+uv run vgt create-admin <username>        # a superadmin, who manages the schools
+uv run vgt create-org "CVO Gent" --language vgt --admin <username>
+uv run vgt add-language <code> "<name>"   # vgt, lsfb and ngt exist already
+uv run vgt import-legacy lexicon.db videos/ --org <school> --dry-run
+uv run vgt import-legacy lexicon.db videos/ --org <school> --report import-report.md
 uv run vgt demo [--clips folder]          # demo data
 uv run vgt openapi > openapi.json
 ```

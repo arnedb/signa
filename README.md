@@ -11,6 +11,9 @@ practise the signs from your course, by year, lesson or list.
   part to a word and chooses to replace the old clip or add an extra one.
 - **Groups** are a course year plus a weekday (“Jaar 1 · dinsdag”). Teachers move students
   between groups, one by one or a whole group at the start of the year. Every move is logged.
+- **Schools** each have their own words, groups, recordings and members, and teach one sign
+  language. Nothing is shared between schools. One account can be in several schools (with a
+  role in each) and in several groups; a switcher in the header picks the school and group.
 
 See [docs/PLAN.md](docs/PLAN.md) for the plan and roadmap.
 
@@ -55,8 +58,9 @@ make api         # http://localhost:8000 (API docs at /api/docs)
 make web         # http://localhost:5173, proxies /api to :8000
 ```
 
-Demo logins: `student` / `demo-student`, `docent` / `demo-docent`, `admin` / `demo-admin`.
-Invite link: `http://localhost:5173/join/demo`.
+Demo logins: `student` / `demo-student` (in two schools), `docent` / `demo-docent`,
+`admin` / `demo-admin` (superadmin). Invite links: `http://localhost:5173/join/demo` and
+`/join/demo-2` (the second school).
 
 ```bash
 make lint typecheck test   # ruff, pyright, pytest, eslint, tsc, vitest
@@ -79,7 +83,7 @@ version does not start. Setup, secrets, backups and restores: [docs/DEPLOY.md](d
 Import the old app into PRO (try it in DEV or on a copy first):
 
 ```bash
-docker compose -p vgt-pro --env-file .env.pro exec vgt vgt import-legacy /data/legacy/lexicon.db /data/legacy/videos --dry-run
+docker compose -p vgt-pro --env-file .env.pro exec vgt vgt import-legacy /data/legacy/lexicon.db /data/legacy/videos --org school --dry-run
 ```
 
 ## License

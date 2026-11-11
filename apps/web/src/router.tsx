@@ -113,46 +113,60 @@ const adminRoute = createRoute({
   beforeLoad: async ({ context, location }) => {
     const me = await context.queryClient.ensureQueryData(meQuery);
     if (!me) throw redirect({ to: "/login", search: { redirect: location.href } });
-    if (!isStaff(me)) throw redirect({ to: "/" });
+    if (!isStaff(me) && !me.is_superadmin) throw redirect({ to: "/" });
   },
   component: AdminLayout,
 });
+
+// The school pages need a school in which the user is staff. A superadmin without one
+// (for example before the first school exists) goes to the list of schools.
+const staffOnly = async ({ context }: { context: Context }) => {
+  const me = await context.queryClient.ensureQueryData(meQuery);
+  if (!isStaff(me)) throw redirect({ to: me?.is_superadmin ? "/admin/schools" : "/" });
+};
 
 // Admin pages load as a separate chunk, so students never download them.
 const adminWordsRoute = createRoute({
   getParentRoute: () => adminRoute,
   path: "/",
   validateSearch: validateAdminWordsSearch,
+  beforeLoad: staffOnly,
   component: lazyRouteComponent(() => import("@/pages/admin/routes"), "AdminWords"),
 });
 const adminWordRoute = createRoute({
   getParentRoute: () => adminRoute,
   path: "/words/$wordId",
+  beforeLoad: staffOnly,
   component: lazyRouteComponent(() => import("@/pages/admin/routes"), "AdminWord"),
 });
 const recordingsRoute = createRoute({
   getParentRoute: () => adminRoute,
   path: "/recordings",
+  beforeLoad: staffOnly,
   component: lazyRouteComponent(() => import("@/pages/admin/Recordings"), "RecordingsPage"),
 });
 const recordingRoute = createRoute({
   getParentRoute: () => adminRoute,
   path: "/recordings/$recordingId",
+  beforeLoad: staffOnly,
   component: lazyRouteComponent(() => import("@/pages/admin/routes"), "AdminRecording"),
 });
 const groupsRoute = createRoute({
   getParentRoute: () => adminRoute,
   path: "/groups",
+  beforeLoad: staffOnly,
   component: lazyRouteComponent(() => import("@/pages/admin/Groups"), "GroupsPage"),
 });
 const groupRoute = createRoute({
   getParentRoute: () => adminRoute,
   path: "/groups/$groupId",
+  beforeLoad: staffOnly,
   component: lazyRouteComponent(() => import("@/pages/admin/routes"), "AdminGroup"),
 });
 const movesRoute = createRoute({
   getParentRoute: () => adminRoute,
   path: "/moves",
+  beforeLoad: staffOnly,
   component: lazyRouteComponent(() => import("@/pages/admin/Users"), "MovesPage"),
 });
 const usersRoute = createRoute({
@@ -163,6 +177,15 @@ const usersRoute = createRoute({
     if (me?.role !== "admin") throw redirect({ to: "/admin" });
   },
   component: lazyRouteComponent(() => import("@/pages/admin/Users"), "UsersPage"),
+});
+const schoolsRoute = createRoute({
+  getParentRoute: () => adminRoute,
+  path: "/schools",
+  beforeLoad: async ({ context }) => {
+    const me = await context.queryClient.ensureQueryData(meQuery);
+    if (!me?.is_superadmin) throw redirect({ to: "/admin" });
+  },
+  component: lazyRouteComponent(() => import("@/pages/admin/Schools"), "SchoolsPage"),
 });
 
 export const routeTree = rootRoute.addChildren([
@@ -179,6 +202,7 @@ export const routeTree = rootRoute.addChildren([
     groupRoute,
     movesRoute,
     usersRoute,
+    schoolsRoute,
   ]),
 ]);
 

@@ -158,6 +158,8 @@ export function JoinPage() {
   const [password, setPassword] = useState("");
   const [repeat, setRepeat] = useState("");
   const [recovery, setRecovery] = useState<{ code: string; user: Me } | null>(null);
+  const qc = useQueryClient();
+  const me = useQuery(meQuery);
 
   const invite = useQuery({
     queryKey: ["invite", code],
@@ -172,6 +174,21 @@ export function JoinPage() {
         }),
       ),
     onSuccess: (data) => setRecovery({ code: data.recovery_code, user: data.user }),
+  });
+  // Already logged in: join with the same account, also for a group of another school.
+  const join = useMutation({
+    mutationFn: () => unwrap(api.POST("/api/v1/me/join", { body: { invite_code: code } })),
+    onSuccess: (user) => {
+      loggedIn(user);
+      void navigate({ to: "/" });
+    },
+  });
+  const logout = useMutation({
+    mutationFn: () => api.POST("/api/v1/auth/logout"),
+    onSettled: () => {
+      qc.clear();
+      qc.setQueryData(meQuery.queryKey, null);
+    },
   });
 
   if (recovery) {
@@ -197,7 +214,7 @@ export function JoinPage() {
     );
   }
 
-  if (invite.isPending) {
+  if (invite.isPending || me.isPending) {
     return (
       <AuthShell>
         <CardContent className="pt-5">
@@ -219,11 +236,44 @@ export function JoinPage() {
     );
   }
 
+  const { group, org } = invite.data;
+  const school = (
+    <p className="text-sm font-medium">{t.auth.joinSchool(org.name, org.language.name)}</p>
+  );
+
+  if (me.data) {
+    const member = me.data.groups.some((g) => g.id === group.id);
+    return (
+      <AuthShell>
+        <CardHeader>
+          <CardTitle>{t.auth.joinTitle(group.label)}</CardTitle>
+          {school}
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          {join.isError && <Alert tone="destructive">{errorMessage(join.error)}</Alert>}
+          <p className="text-sm">{t.auth.joinAs(me.data.username)}</p>
+          {member && <Alert tone="primary">{t.auth.alreadyMember}</Alert>}
+          <Button size="lg" onClick={() => join.mutate()} disabled={join.isPending}>
+            {t.auth.joinWithAccount}
+          </Button>
+          <button
+            type="button"
+            className="cursor-pointer self-start text-sm text-primary hover:underline"
+            onClick={() => logout.mutate()}
+          >
+            {t.auth.otherAccount}
+          </button>
+        </CardContent>
+      </AuthShell>
+    );
+  }
+
   const canSubmit = password.length >= 8 && password === repeat && username.length >= 3;
   return (
     <AuthShell>
       <CardHeader>
-        <CardTitle>{t.auth.joinTitle(invite.data.group.label)}</CardTitle>
+        <CardTitle>{t.auth.joinTitle(group.label)}</CardTitle>
+        {school}
         <CardDescription>{t.auth.joinIntro}</CardDescription>
       </CardHeader>
       <CardContent>
@@ -259,6 +309,12 @@ export function JoinPage() {
             {register.isPending ? t.auth.joining : t.auth.join}
           </Button>
         </form>
+        <div className="mt-6 border-t pt-4 text-sm">
+          <p className="text-muted-foreground">{t.auth.haveAccount}</p>
+          <Link to="/login" search={{ redirect: `/join/${code}` }} className="text-primary hover:underline">
+            {t.auth.loginToJoin}
+          </Link>
+        </div>
       </CardContent>
     </AuthShell>
   );

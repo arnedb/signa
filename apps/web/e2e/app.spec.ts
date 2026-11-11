@@ -94,3 +94,49 @@ test("a teacher sees groups and the invite link", async ({ page }) => {
   await page.getByRole("link", { name: "Jaar 1 · dinsdag" }).click();
   await expect(page.getByRole("checkbox", { name: "student", exact: true })).toBeVisible();
 });
+
+test("a student joins a second school with the same account and switches between them", async ({ page }, info) => {
+  const name = `jan-${info.project.name}-${Date.now() % 100000}`;
+  await page.goto("/join/demo");
+  await page.getByLabel("Gebruikersnaam").fill(name);
+  await page.getByLabel("Wachtwoord", { exact: true }).fill("geheim-wachtwoord");
+  await page.getByLabel("Herhaal wachtwoord").fill("geheim-wachtwoord");
+  await page.getByRole("button", { name: "Account maken" }).click();
+  await page.getByRole("button", { name: "Ik heb de code bewaard" }).click();
+  await expect(page.getByLabel("School en groep")).toHaveCount(0);
+
+  await page.goto("/join/demo-2");
+  await expect(page.getByText(`Je bent aangemeld als ${name}.`)).toBeVisible();
+  await expect(page.getByText("Tweede school · Vlaamse Gebarentaal")).toBeVisible();
+  await page.getByRole("button", { name: "Lid worden met deze account" }).click();
+  await expect(page.getByRole("heading", { name: "Oefenen" })).toBeVisible();
+  const switcher = page.getByLabel("School en groep");
+  await expect(switcher.locator("option:checked")).toHaveText("Tweede school · Jaar 1 · zaterdag");
+
+  // Each school has its own words.
+  await page.goto("/dictionary");
+  await page.getByLabel("Zoek een woord").fill("welkom");
+  await expect(page.getByText("1 woord")).toBeVisible();
+  await page.getByLabel("Zoek een woord").fill("huis");
+  await expect(page.getByText("Geen woorden gevonden.")).toBeVisible();
+
+  await switcher.selectOption({ label: "Demoschool · Jaar 1 · dinsdag" });
+  await expect(page.getByRole("heading", { name: "Oefenen" })).toBeVisible();
+  await page.goto("/dictionary");
+  await page.getByLabel("Zoek een woord").fill("huis");
+  await expect(page.getByText("1 woord")).toBeVisible();
+});
+
+test("a superadmin creates a school with its first admin", async ({ page }, info) => {
+  const school = `School ${info.project.name} ${Date.now() % 100000}`;
+  await login(page, "admin", "demo-admin");
+  await page.goto("/admin/schools");
+  await page.getByRole("button", { name: "Nieuwe school" }).click();
+  const dialog = page.getByRole("dialog");
+  await dialog.getByLabel("Naam", { exact: true }).fill(school);
+  await dialog.getByLabel("Gebarentaal").selectOption("lsfb");
+  await dialog.getByLabel(/Eerste beheerder/).fill(`dir-${Date.now() % 100000}`);
+  await dialog.getByRole("button", { name: "Nieuwe school" }).click();
+  await expect(page.getByText(`${school} is aangemaakt.`)).toBeVisible();
+  await expect(page.getByRole("row", { name: new RegExp(school) })).toContainText("Langue des signes");
+});

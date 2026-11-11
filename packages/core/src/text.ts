@@ -6,7 +6,7 @@
 export const nl = {
   app: {
     name: "VGT oefenen",
-    tagline: "Oefen de gebaren uit je les Vlaamse Gebarentaal.",
+    tagline: "Oefen de gebaren uit je les gebarentaal.",
     skipToContent: "Naar de inhoud",
     devBanner: "Testomgeving (DEV): gegevens hier kunnen verdwijnen.",
     loading: "Laden…",
@@ -42,6 +42,13 @@ export const nl = {
     logout: "Afmelden",
     menu: "Menu",
   },
+  context: {
+    label: "School en groep",
+    school: "School",
+    noGroup: "Geen groep",
+    noSchoolTitle: "Je hoort nog bij geen school",
+    noSchoolIntro: "Vraag je leerkracht om een uitnodigingslink. Daarmee word je lid van een groep.",
+  },
   auth: {
     login: "Aanmelden",
     loggingIn: "Aanmelden…",
@@ -56,6 +63,13 @@ export const nl = {
     forgot: "Wachtwoord vergeten?",
     noAccount: "Nog geen account? Vraag de uitnodigingslink aan je leerkracht.",
     joinTitle: (group: string) => `Word lid van ${group}`,
+    joinSchool: (school: string, language: string) => `${school} · ${language}`,
+    haveAccount: "Heb je al een account, bijvoorbeeld van een andere groep of school?",
+    loginToJoin: "Meld je aan en word lid met dezelfde account",
+    joinAs: (user: string) => `Je bent aangemeld als ${user}.`,
+    joinWithAccount: "Lid worden met deze account",
+    alreadyMember: "Je bent al lid van deze groep.",
+    otherAccount: "Een andere account gebruiken",
     joinIntro:
       "Kies een gebruikersnaam en een wachtwoord. We vragen geen e-mailadres en geen echte naam.",
     join: "Account maken",
@@ -136,7 +150,9 @@ export const nl = {
     title: "Profiel",
     group: "Groep",
     groups: "Groepen",
+    schools: "Scholen",
     role: "Rol",
+    superadmin: "Beheerder van alle scholen",
     roles: { student: "Student", teacher: "Leerkracht", admin: "Beheerder" } as Record<string, string>,
     memberSince: "Lid sinds",
     changePassword: "Wachtwoord wijzigen",
@@ -146,22 +162,24 @@ export const nl = {
     newRecoveryIntro: "Je oude herstelcode werkt daarna niet meer.",
     data: "Je gegevens",
     dataIntro:
-      "We bewaren je gebruikersnaam, je groep en je antwoorden bij het oefenen. Geen e-mail, geen echte naam.",
+      "We bewaren je gebruikersnaam, je scholen en groepen en je antwoorden bij het oefenen. Geen e-mail, geen echte naam.",
     download: "Download mijn gegevens",
     deleteAccount: "Account verwijderen",
     deleteIntro:
       "Je account en al je resultaten worden meteen en definitief verwijderd. Dit kan niet ongedaan gemaakt worden.",
     deleteConfirm: "Vul je wachtwoord in om te bevestigen.",
     deleteButton: "Verwijder mijn account",
-    groupFixed: "Je groep kan alleen je leerkracht wijzigen.",
+    groupFixed:
+      "Alleen je leerkracht kan je naar een andere groep verplaatsen. Met een uitnodigingslink word je lid van nog een groep, ook van een andere school.",
   },
   admin: {
     title: "Beheer",
     words: "Woorden",
     recordings: "Opnames",
     groups: "Groepen",
-    users: "Gebruikers",
+    users: "Leden",
     moves: "Verplaatsingen",
+    schools: "Scholen",
     toApp: "Naar de app",
     newWord: "Nieuw woord",
     gloss: "Woord",
@@ -283,10 +301,35 @@ export const nl = {
     noResultsView: "Resultaten van individuele studenten zijn niet zichtbaar.",
     deactivate: "Groep deactiveren",
     activate: "Groep activeren",
-    // Users
-    newTeacher: "Nieuwe leerkracht",
+    // Members of a school
+    newTeacher: "Lid toevoegen",
+    addMemberIntro:
+      "Bestaat de gebruikersnaam al (bv. van een andere school), dan wordt die account toegevoegd. Anders maken we een nieuwe account met een tijdelijk wachtwoord.",
+    memberAdded: (u: string) => `${u} is toegevoegd aan de school.`,
     role: "Rol",
     makeRole: "Rol wijzigen",
+    removeMember: "Uit de school verwijderen",
+    removeConfirm: (u: string) =>
+      `${u} uit deze school en haar groepen verwijderen? De account zelf blijft bestaan.`,
+    // Schools (superadmin)
+    newSchool: "Nieuwe school",
+    schoolName: "Naam",
+    shortName: "Korte naam",
+    shortNameHint: "Kleine letters, cijfers en streepjes. Leeg laten om hem uit de naam te maken.",
+    language: "Gebarentaal",
+    firstAdmin: "Eerste beheerder (gebruikersnaam)",
+    firstAdminHint: "Een bestaande account, of een nieuwe met een tijdelijk wachtwoord. Mag leeg blijven.",
+    schoolCreated: (name: string) => `${name} is aangemaakt.`,
+    rename: "Naam wijzigen",
+    newName: "Nieuwe naam",
+    deactivateSchool: "School deactiveren",
+    activateSchool: "School activeren",
+    deactivateSchoolConfirm: (name: string) =>
+      `${name} deactiveren? Niemand kan er dan nog in werken, tot je ze weer activeert.`,
+    memberCount: (n: number) => (n === 1 ? "1 lid" : `${n} leden`),
+    groupCount: (n: number) => (n === 1 ? "1 groep" : `${n} groepen`),
+    schoolsIntro:
+      "Elke school heeft haar eigen woorden, groepen en leden. Niets wordt gedeeld tussen scholen.",
   },
 } as const;
 

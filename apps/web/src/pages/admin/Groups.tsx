@@ -160,7 +160,11 @@ export function GroupPage({ groupId }: { groupId: number }) {
       const to_group_id = Number(target);
       return all
         ? unwrap(api.POST("/api/v1/admin/groups/{group_id}/move-all", { ...params, body: { to_group_id } }))
-        : unwrap(api.POST("/api/v1/admin/groups/move-students", { body: { user_ids: [...selected], to_group_id } }));
+        : unwrap(
+            api.POST("/api/v1/admin/groups/move-students", {
+              body: { user_ids: [...selected], from_group_id: groupId, to_group_id },
+            }),
+          );
     },
     onSuccess: (r) => {
       setSelected(new Set());

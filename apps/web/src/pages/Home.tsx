@@ -56,7 +56,7 @@ export function HomePage() {
   const difficult = useQuery(difficultQuery);
   const navigate = useNavigate();
 
-  const groupYear = me?.groups[0]?.year;
+  const groupYear = me?.group?.year;
   const years = catalog.data?.years ?? [];
   const [yearChoice, setYear] = useState<number | null>(null);
   const year =

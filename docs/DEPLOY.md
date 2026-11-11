@@ -115,14 +115,22 @@ secrets, and the deploy stops early with a clear message when one of these setti
 
 Secrets live only in GitHub and in the server's `.env.*` files, never in this repository.
 
-### First admin
+### First admin and first school
 
 ```bash
 docker compose -p vgt-pro --env-file .env.pro exec vgt vgt create-admin <username>
+docker compose -p vgt-pro --env-file .env.pro exec vgt vgt create-org "CVO Gent" --language vgt --admin <teacher>
 ```
 
-DEV starts with the demo users (`admin` / `demo-admin`, `docent` / `demo-docent`,
-`student` / `demo-student`) when its database is empty.
+`create-admin` makes a superadmin, who manages the schools (*Beheer → Scholen*) and acts as
+admin in each of them. `create-org` makes a school; `--admin` names its first admin (an
+existing account, or a new one with a temporary password). Schools can also be created in
+the web app. A database from before schools existed is moved into one school, “School”,
+by the migration; rename it under *Beheer → Scholen*.
+
+DEV starts with the demo data when its database is empty: two schools, and the users
+`admin` / `demo-admin` (superadmin), `docent` / `demo-docent` and `student` / `demo-student`
+(a student in both schools).
 
 ## Day to day
 
