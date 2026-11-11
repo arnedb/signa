@@ -279,3 +279,23 @@ def test_migration_moves_data_into_one_school(tmp_path: Path, monkeypatch) -> No
         roles = con.execute(text("SELECT username, role FROM users ORDER BY id")).all()
         assert roles == [("adm", "admin"), ("juf", "teacher"), ("stu", "student")]
         assert con.execute(text("SELECT count(*) FROM memberships")).scalar() == 2
+
+
+def test_recordings_stay_in_their_school(teacher: TestClient, db: Session) -> None:
+    from vgt.models import Job, JobKind, JobStatus
+
+    other = make_org(db, "other", "Other school")
+    job = Job(
+        kind=JobKind.split,
+        status=JobStatus.done,
+        org_id=other.id,
+        payload={"filename": "x.mp4"},
+        result={"source": "sources/x.mp4", "duration": 5, "segments": [], "applied": []},
+    )
+    db.add(job)
+    db.commit()
+    assert teacher.get("/api/v1/admin/recordings").json() == []
+    assert teacher.get(f"/api/v1/admin/recordings/{job.id}").status_code == 404
+    assert teacher.get(f"/api/v1/admin/jobs/{job.id}").status_code == 404
+    assert teacher.get(f"/api/v1/media/recordings/{job.id}").status_code == 404
+    assert teacher.post(f"/api/v1/admin/recordings/{job.id}/split", json={}).status_code == 404

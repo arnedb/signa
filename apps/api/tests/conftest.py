@@ -151,3 +151,25 @@ def sample_video(tmp_path_factory: pytest.TempPathFactory) -> Path:
         check=True,
     )  # fmt: skip
     return out
+
+
+@pytest.fixture(scope="session")
+def noisy_video(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    """Like a real class video: the signer rests (1.5 s) before, between and after three
+    signs (1 s each), and camera noise means no frame is ever truly still."""
+    out = tmp_path_factory.mktemp("video") / "noisy.mp4"
+    filters = ["[1]trim=duration=1.5,setpts=PTS-STARTPTS,split=4[r0][r1][r2][r3]"]
+    for i in range(3):
+        filters.append(f"[0]trim=start={i}:duration=1,setpts=PTS-STARTPTS[m{i}]")
+    filters.append("[r0][m0][r1][m1][r2][m2][r3]concat=n=7:v=1:a=0,noise=alls=25:allf=t[out]")
+    subprocess.run(
+        [
+            "ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
+            "-f", "lavfi", "-i", "testsrc2=s=320x240:r=30:d=4",
+            "-f", "lavfi", "-i", "color=c=gray:s=320x240:r=30:d=2",
+            "-filter_complex", ";".join(filters), "-map", "[out]",
+            "-c:v", "libx264", "-pix_fmt", "yuv420p", str(out),
+        ],
+        check=True,
+    )  # fmt: skip
+    return out
