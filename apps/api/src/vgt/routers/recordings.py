@@ -4,10 +4,12 @@ from fastapi import APIRouter, File, HTTPException, UploadFile, status
 from sqlalchemy import select
 
 from vgt.deps import DB, Teacher
-from vgt.jobs import enqueue
-from vgt.models import Job, JobKind, JobStatus, Word
+from vgt.jobs import enqueue, wake
+from vgt.legacy import lesson_of
+from vgt.models import Job, JobKind, JobStatus, User, Word, WordStatus
 from vgt.routers.uploads import save_upload
-from vgt.schemas import JobOut, RecordingApplyIn, RecordingOut, Segment, SegmentsIn
+from vgt.schemas import JobOut, RecordingApplyIn, RecordingOut, Segment, SegmentsIn, SplitIn
+from vgt.services import words as word_service
 
 router = APIRouter(prefix="/admin", tags=["admin: recordings"])
 
@@ -22,6 +24,7 @@ def _recording_out(job: Job) -> RecordingOut:
         error=job.error,
         source_url=f"/api/v1/media/recordings/{job.id}" if result.get("source") else None,
         duration=result.get("duration"),
+        method=result.get("method"),
         segments=[Segment(**s) for s in result.get("segments", [])],
         applied=result.get("applied", []),
     )
@@ -81,27 +84,90 @@ def save_segments(job_id: int, body: SegmentsIn, _user: Teacher, db: DB) -> Reco
     return _recording_out(job)
 
 
+@router.post("/recordings/{job_id}/split", response_model=RecordingOut, status_code=202)
+def split_again(job_id: int, body: SplitIn, _user: Teacher, db: DB) -> RecordingOut:
+    """Detect the cut points again, for example with the other method. Replaces the segments."""
+    job = _recording(db, job_id)
+    if job.status != JobStatus.done or not (job.result or {}).get("source"):
+        raise HTTPException(status.HTTP_409_CONFLICT, "The recording is not ready yet")
+    job.payload = {**job.payload, "method": body.method}
+    job.status = JobStatus.queued
+    job.error = None
+    db.commit()
+    wake()
+    return _recording_out(job)
+
+
+def _key(gloss: str) -> str:
+    return " ".join(gloss.split()).casefold()
+
+
+def _create_words(db: DB, body: RecordingApplyIn, user: User) -> dict[int, Word]:
+    """Create the new words of an apply request, in segment order. Returns {item index: word}."""
+    new = [(i, item.gloss) for i, item in enumerate(body.items) if item.gloss is not None]
+    if not new:
+        return {}
+    if body.year is None:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Choose a year for the new words")
+    list_number = body.list_number or None
+    seen: set[str] = set()
+    for _i, gloss in new:
+        if _key(gloss) in seen:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, f"'{gloss}' is in the list twice")
+        seen.add(_key(gloss))
+    on_list = list(
+        db.scalars(select(Word).where(Word.year == body.year, Word.list_number == list_number))
+    )
+    taken = sorted(w.gloss for w in on_list if _key(w.gloss) in seen)
+    if taken:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            f"Already on this list: {', '.join(taken)}. Choose the existing word instead.",
+        )
+    position = max((w.position for w in on_list), default=0)
+    created: dict[int, Word] = {}
+    for i, gloss in new:
+        position += 1
+        word = Word(
+            gloss=gloss,
+            year=body.year,
+            lesson=lesson_of(list_number),
+            list_number=list_number,
+            position=position,
+            status=WordStatus.published if body.publish else WordStatus.draft,
+            created_by=user.id,
+            updated_by=user.id,
+        )
+        db.add(word)
+        db.flush()
+        word_service.log(db, word, user, "create", word_service.snapshot(word))
+        created[i] = word
+    return created
+
+
 @router.post("/recordings/{job_id}/apply", response_model=list[JobOut], status_code=202)
 def apply_recording(job_id: int, body: RecordingApplyIn, user: Teacher, db: DB) -> list[JobOut]:
-    """Cut each matched segment into a clip for its word (replace or add as extra)."""
+    """Cut each segment into a clip: for an existing word (replace or add as extra), or for
+    a new word on the chosen year and list (created as a draft unless ``publish``)."""
     job = _recording(db, job_id)
     if job.status != JobStatus.done or not job.result:
         raise HTTPException(status.HTTP_409_CONFLICT, "The recording is not ready yet")
     _check_segments(job, list(body.items))
-    missing = {i.word_id for i in body.items} - set(
-        db.scalars(select(Word.id).where(Word.id.in_([i.word_id for i in body.items])))
-    )
+    ids = {i.word_id for i in body.items if i.word_id is not None}
+    missing = ids - set(db.scalars(select(Word.id).where(Word.id.in_(ids))))
     if missing:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, f"Unknown words: {sorted(missing)}")
+    created = _create_words(db, body, user)
     jobs: list[Job] = []
     applied = list(job.result.get("applied", []))
-    for item in body.items:
+    for i, item in enumerate(body.items):
+        word_id = created[i].id if i in created else item.word_id
         child = enqueue(
             db,
             JobKind.transcode,
             {
                 "src": job.result["source"],
-                "word_id": item.word_id,
+                "word_id": word_id,
                 "mode": item.mode,
                 "start": item.start,
                 "end": item.end,
@@ -111,7 +177,9 @@ def apply_recording(job_id: int, body: RecordingApplyIn, user: Teacher, db: DB) 
             user,
         )
         jobs.append(child)
-        applied.append({**item.model_dump(), "job_id": child.id})
+        applied.append(
+            {**item.model_dump(), "word_id": word_id, "new": i in created, "job_id": child.id}
+        )
     job.result = {**job.result, "applied": applied}
     db.commit()
     return [JobOut.model_validate(j) for j in jobs]

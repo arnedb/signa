@@ -207,6 +207,7 @@ export const nl = {
       clip_archive: "video gearchiveerd",
       clip_restore: "video teruggezet",
       clip_primary: "hoofdvideo gekozen",
+      clip_trim: "video ingekort",
       undo: "ongedaan gemaakt",
     } as Record<string, string>,
     fields: {
@@ -221,7 +222,7 @@ export const nl = {
     sources: { legacy: "oude app", recording: "opname", demo: "demo" } as Record<string, string>,
     // Recording sessions
     recordingsIntro:
-      "Upload een lange video waarin je de woorden na elkaar gebaart, met een korte pauze (stilstaan) tussen elk woord. De app knipt de video automatisch.",
+      "Upload een lange video waarin je de woorden na elkaar gebaart, met de handen even in rust tussen elk woord. De app knipt de video automatisch. Daarna koppel je elk fragment aan een bestaand woord of maak je er een nieuw woord van.",
     uploadRecording: "Opname uploaden",
     recordingStatus: {
       queued: "In de wachtrij",
@@ -255,6 +256,51 @@ export const nl = {
     apply: (n: number) => `${n} video's maken`,
     applied: "De video's worden gemaakt. Ze verschijnen zo bij de woorden.",
     alreadyApplied: "Al verwerkt",
+    // Splitting and labelling
+    splitMethod: "Knipmethode",
+    splitMethods: {
+      motion: "Rustmomenten (aanbevolen)",
+      freeze: "Stilstaand beeld",
+    } as Record<string, string>,
+    splitMethodHint:
+      "Rustmomenten werkt ook bij een bewegende camera of ruis. Stilstaand beeld knipt strakker als het beeld tussen de woorden echt stilstaat.",
+    splitAgain: "Opnieuw knippen",
+    splitAgainConfirm: "De knippunten worden opnieuw bepaald. Wat je hier aanpaste, gaat verloren. Doorgaan?",
+    splitFailed: "Opnieuw knippen is mislukt:",
+    timeline: "Tijdlijn: klik om naar dat moment te gaan",
+    shortcuts: "Sneltoetsen",
+    splitKeys: "spatie afspelen/pauzeren · S knip hier · ← → 0,5 s · Shift+← → 5 s",
+    newWordOption: "+ Nieuw woord…",
+    newWordGloss: "Nieuw woord",
+    existingWord: "Bestaand woord kiezen",
+    allNew: "Alle lege fragmenten als nieuw woord",
+    newWordsGoTo: (where: string) => `Nieuwe woorden komen in ${where}.`,
+    newWordsNeedList: "Kies of typ een lijst voor de nieuwe woorden (of laat leeg voor geen lijst).",
+    publishNew: "Nieuwe woorden meteen publiceren",
+    existsOnList: "Bestaat al op deze lijst: kies het bestaande woord",
+    existsElsewhere: (lists: string) => `Bestaat al in ${lists}: wordt een extra woord`,
+    needsGloss: (n: number) => (n === 1 ? "1 nieuw woord heeft nog geen naam" : `${n} nieuwe woorden hebben nog geen naam`),
+    listHint: "Typ een nieuw lijstnummer om een nieuwe lijst te beginnen.",
+    // Trimming a clip
+    trim: "Inkorten",
+    trimTitle: "Video inkorten",
+    trimIntro:
+      "Sleep de grepen of zet begin en einde op het huidige beeld. De ingekorte video vervangt deze video; de oorspronkelijke wordt gearchiveerd, dus je kunt het ongedaan maken.",
+    trimKeys: "I begin · O einde · spatie afspelen · ← → 1 beeld · Shift+← → 1 s · Home/End naar begin/einde",
+    jumpToStart: "Naar begin",
+    jumpToEnd: "Naar einde",
+    prevFrame: "Vorig beeld",
+    nextFrame: "Volgend beeld",
+    play: "Afspelen",
+    pause: "Pauzeren",
+    resetTrim: "Herstellen",
+    trimNone: (total: string) => `${total}: nog niets ingekort`,
+    trimPreview: (total: string, kept: string, cut: string) => `${total} → ${kept} (${cut} eraf)`,
+    trimSave: "Inkorten",
+    trimming: "Video wordt ingekort…",
+    trimmed: "Video ingekort.",
+    startHandle: "Begin",
+    endHandle: "Einde",
     // Groups
     newGroup: "Nieuwe groep",
     weekday: "Weekdag",

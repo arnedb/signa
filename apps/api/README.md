@@ -12,7 +12,7 @@ src/vgt/
   routers/         one module per area: auth, me, words, media, admin_*
   services/        word changes + audit log + undo, sessions
   jobs.py          database job queue + worker thread (clip uploads, recording sessions)
-  media.py         ffmpeg: standard encoding, thumbnails, auto-split with freezedetect
+  media.py         ffmpeg: standard encoding, thumbnails, auto-split (rest detection or freezedetect)
   legacy.py        import of the old app's lexicon.db and videos
   demo.py          demo users, group and words
   cli.py           the `vgt` command
@@ -49,7 +49,10 @@ uv run vgt openapi > openapi.json
 | `VGT_RUN_WORKER` | `true` | run the job worker in the web process |
 | `VGT_MAX_UPLOAD_MB` | `2048` | |
 | `VGT_VIDEO_HEIGHT`, `VGT_VIDEO_CRF` | `480`, `26` | clip encoding |
-| `VGT_SPLIT_NOISE`, `VGT_SPLIT_MIN_FREEZE`, `VGT_SPLIT_MIN_CLIP` | `0.003`, `0.6`, `0.6` | auto-split |
+| `VGT_SPLIT_METHOD` | `motion` | auto-split: `motion` (rests between signs) or `freeze` (truly still frames) |
+| `VGT_SPLIT_REST_PERCENTILE` | `30` | `motion`: the quietest share of the video (%) that sets the rest level |
+| `VGT_SPLIT_NOISE`, `VGT_SPLIT_MIN_FREEZE` | `0.003`, `0.6` | `freeze`: noise tolerance, shortest still moment (s) |
+| `VGT_SPLIT_MIN_CLIP` | `0.6` | both: shorter parts (s) are dropped |
 
 ## Notes
 
@@ -61,5 +64,16 @@ uv run vgt openapi > openapi.json
   and marks the event as undone. A field change cannot be undone after a later change to the
   same field (409), so nothing is silently overwritten.
 - **Clips are never deleted**: replacing archives the old clip, so a replacement can be undone.
+  Trimming (`POST /admin/clips/{id}/trim`) works the same way: a shortened copy takes the
+  clip's place (and its primary status) and the original is archived (`clip_trim` event).
+- **Auto-split**: `motion` measures the picture change 10 times per second with ffmpeg
+  (`tblend` difference + `signalstats`), smooths it over 0.5 s and finds the rests. The threshold
+  is the `VGT_SPLIT_REST_PERCENTILE` level plus 20 % of the way to the busy (90th percentile)
+  level. Boundaries are the middles of the rests between signs; segments run from one boundary
+  to the next. `POST /admin/recordings/{id}/split` splits again (with either method) and keeps
+  what was already applied. If that fails, the old segments stay and the error is shown.
+- **New words from a recording**: an apply item has `word_id` (existing word) or `gloss` (new
+  word on the request's `year` and `list_number`, lesson from the list number, appended after the
+  list's last position, draft unless `publish`). A gloss already on that list gives 409.
 - **Legacy import**: one word per `(word, year, list_number)`; more rows for the same word add
   extra clips. Lesson = the number before the dot in the list number (`3.2` → lesson 3).

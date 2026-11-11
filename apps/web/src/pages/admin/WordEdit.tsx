@@ -2,17 +2,19 @@ import type { AdminWord, Clip, Schemas } from "@vgt/api-client";
 import { t } from "@vgt/core";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { Archive, ArchiveRestore, ArrowLeft, Star, Undo2, Upload } from "lucide-react";
+import { Archive, ArchiveRestore, ArrowLeft, Scissors, Star, Undo2, Upload } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { ErrorView, Field, Spinner } from "@/components/common";
 import { SignVideo } from "@/components/Video";
 import { Button } from "@/components/ui/button";
 import { Alert, Badge, Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog } from "@/components/ui/dialog";
 import { Input, Textarea } from "@/components/ui/input";
 import { api, errorMessage, unwrap } from "@/lib/api";
 import { isRunning, uploadFile, useJob, type Job } from "@/lib/upload";
-import { formatDate } from "@/lib/utils";
+import { formatDate, formatSeconds } from "@/lib/utils";
+import { Trimmer } from "@/pages/admin/Trim";
 import { StatusBadge } from "@/pages/admin/Words";
 
 type WordEvent = Schemas["WordEventOut"];
@@ -144,6 +146,7 @@ function WordForm({ word }: { word: AdminWord }) {
 
 function ClipCard({ clip, wordId }: { clip: Clip; wordId: number }) {
   const updated = useWordUpdated(wordId);
+  const [trimming, setTrimming] = useState(false);
   const action = useMutation({
     mutationFn: (kind: "primary" | "archive" | "restore") => {
       const params = { params: { path: { clip_id: clip.id } } };
@@ -168,6 +171,11 @@ function ClipCard({ clip, wordId }: { clip: Clip; wordId: number }) {
             <Star aria-hidden /> {t.admin.makePrimary}
           </Button>
         )}
+        {!clip.archived && (
+          <Button size="sm" variant="outline" onClick={() => setTrimming(true)}>
+            <Scissors aria-hidden /> {t.admin.trim}
+          </Button>
+        )}
         {clip.archived ? (
           <Button size="sm" variant="outline" onClick={() => action.mutate("restore")}>
             <ArchiveRestore aria-hidden /> {t.admin.restore}
@@ -178,6 +186,17 @@ function ClipCard({ clip, wordId }: { clip: Clip; wordId: number }) {
           </Button>
         )}
       </div>
+      <Dialog open={trimming} onOpenChange={setTrimming} title={t.admin.trimTitle} wide>
+        {trimming && (
+          <Trimmer
+            clip={clip}
+            onDone={() => {
+              setTrimming(false);
+              updated();
+            }}
+          />
+        )}
+      </Dialog>
     </div>
   );
 }
@@ -264,13 +283,24 @@ function describe(e: WordEvent): string {
       .join("; ");
     return `${label} (${fields})`;
   }
+  if (e.action === "clip_trim" && typeof e.diff_json.start === "number" && typeof e.diff_json.end === "number") {
+    return `${label} (${formatSeconds(e.diff_json.start)} – ${formatSeconds(e.diff_json.end)})`;
+  }
   if (e.action === "undo") {
     return `${label}: ${t.admin.actions[String(e.diff_json.action)] ?? ""}`;
   }
   return label;
 }
 
-const UNDOABLE = new Set(["update", "clip_add", "clip_replace", "clip_archive", "clip_restore", "clip_primary"]);
+const UNDOABLE = new Set([
+  "update",
+  "clip_add",
+  "clip_replace",
+  "clip_trim",
+  "clip_archive",
+  "clip_restore",
+  "clip_primary",
+]);
 
 function History({ wordId }: { wordId: number }) {
   const events = useQuery(eventsQuery(wordId));

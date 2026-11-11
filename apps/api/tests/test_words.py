@@ -111,3 +111,51 @@ def test_bad_upload_type(teacher: TestClient) -> None:
         f"/api/v1/admin/words/{w['id']}/clips", files={"file": ("a.txt", b"hello", "text/plain")}
     )
     assert r.status_code == 400
+
+
+def test_trim_clip_and_undo(teacher: TestClient, sample_video: Path) -> None:
+    w = _create(teacher)
+    for mode in ("replace", "extra"):
+        with sample_video.open("rb") as f:
+            teacher.post(
+                f"/api/v1/admin/words/{w['id']}/clips",
+                files={"file": ("a.mp4", f, "video/mp4")},
+                data={"mode": mode},
+            )
+        jobs.run_pending()
+    primary, extra = teacher.get(f"/api/v1/admin/words/{w['id']}").json()["clips"]
+    assert primary["is_primary"] and 7 < primary["duration"] < 8
+
+    url = f"/api/v1/admin/clips/{primary['id']}/trim"
+    assert teacher.post(url, json={"start": 2, "end": 99}).status_code == 400
+    assert teacher.post(url, json={"start": 2, "end": 2.1}).status_code == 400
+    r = teacher.post(url, json={"start": 2.5, "end": 3.5})
+    assert r.status_code == 202, r.text
+    assert jobs.run_pending() == 1
+    assert teacher.get(f"/api/v1/admin/jobs/{r.json()['id']}").json()["status"] == "done"
+
+    clips = teacher.get(f"/api/v1/admin/words/{w['id']}").json()["clips"]
+    new = next(c for c in clips if c["id"] not in (primary["id"], extra["id"]))
+    assert new["is_primary"] and not new["archived"] and 0.9 < new["duration"] < 1.2
+    assert new["source"] == primary["source"]
+    old = next(c for c in clips if c["id"] == primary["id"])
+    assert old["archived"] and not old["is_primary"]
+    assert next(c for c in clips if c["id"] == extra["id"])["archived"] is False
+
+    # An archived clip cannot be trimmed; restore it first.
+    assert teacher.post(url, json={"start": 0, "end": 1}).status_code == 409
+
+    # Trimming an extra clip keeps the primary clip as it is.
+    teacher.post(f"/api/v1/admin/clips/{extra['id']}/trim", json={"start": 0, "end": 1})
+    jobs.run_pending()
+    clips = teacher.get(f"/api/v1/admin/words/{w['id']}").json()["clips"]
+    assert next(c for c in clips if c["is_primary"])["id"] == new["id"]
+
+    # Undo the first trim: the full clip is back as the primary one.
+    events = teacher.get(f"/api/v1/admin/words/{w['id']}/events").json()
+    trims = [e for e in events if e["action"] == "clip_trim"]
+    assert len(trims) == 2 and trims[-1]["diff_json"]["old_clip"] == primary["id"]
+    word = teacher.post(f"/api/v1/admin/events/{trims[-1]['id']}/undo").json()
+    by_id = {c["id"]: c for c in word["clips"]}
+    assert by_id[primary["id"]]["is_primary"] and not by_id[primary["id"]]["archived"]
+    assert by_id[new["id"]]["archived"]
