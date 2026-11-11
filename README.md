@@ -69,7 +69,8 @@ make api-client            # after changing the API: regenerate the TypeScript c
 Two environments run the same image, each behind Traefik with its own database and videos:
 
 - **DEV**: every commit on `main` is deployed automatically once CI passed.
-- **PRO**: publish a GitHub release (or `make deploy-pro REF=<tag or sha>`) and approve.
+- **PRO**: publish a GitHub release (`v1.2.0`); it is deployed the next night. To deploy
+  right away: `make deploy-pro REF=<tag or sha>`.
   PRO only accepts an image that already ran in DEV; it is never rebuilt.
 
 Each deploy backs up the database, waits for the health check and rolls back if the new

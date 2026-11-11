@@ -6,8 +6,8 @@ There are two deployments of the same image:
 |---|---|---|
 | Purpose | try every change before it reaches students | the real app |
 | URL (example) | `vgt-dev.arnedb.be` | `vgt.arnedb.be` |
-| Deployed | automatically, every commit on `main` after CI passed | on a published GitHub release, or by hand |
-| Image | built from the commit, tagged `:<sha>` and `:dev` | the **same** `:<sha>` image, retagged `:pro`. Never rebuilt |
+| Deployed | automatically, every commit on `main` after CI passed | at night, when there is a new release; or by hand right away |
+| Image | built from the commit as `:<sha>`, tagged `:dev` once it runs | the **same** `:<sha>` image, tagged `:pro` once it runs. Never rebuilt |
 | Data | own database and videos; demo data when empty | own database and the class videos |
 | In the app | yellow “Testomgeving (DEV)” bar, `[DEV]` in the tab title | nothing extra |
 
@@ -18,8 +18,29 @@ is on `main`.
 ```mermaid
 flowchart LR
   push[push to main] --> CI --> build["build image :sha"] --> dev[DEV]
-  release[GitHub release<br/>or Run workflow] --> check{image :sha exists<br/>and CI passed?} -- yes --> approve[approval] --> pro[PRO]
+  release[nightly: newest release<br/>or Run workflow] --> check{image :sha exists<br/>and CI passed?} -- yes --> approve[approval] --> pro[PRO]
 ```
+
+## Nightly PRO deploy
+
+Every night at 01:30 UTC (02:30 in Brussels in winter, 03:30 in summer; GitHub often starts
+scheduled runs some minutes late) the Deploy workflow looks for the newest **published**
+release whose tag starts with `v` (for example `v1.3.0`):
+
+- if PRO already runs it, the run stops after a few seconds and nothing changes;
+- otherwise it deploys that release to PRO, with the same checks, backup and rollback as
+  any deploy.
+
+Draft releases, pre-releases and other releases (such as `demo-media-v1`) are never
+deployed at night. "What PRO runs" is the `:pro` image tag, which only moves after a
+successful PRO deploy, so a failed deploy is simply tried again the next night.
+
+If the `pro` environment has required reviewers, the nightly deploy waits for an approval,
+so it only goes out at night if someone approves it then. To deploy fully unattended,
+remove the required reviewers and treat publishing the release as the approval.
+
+GitHub turns off scheduled workflows in a public repository after 60 days without any
+commits; turn it back on under *Actions → Deploy*.
 
 ## What a deploy does on the server
 
@@ -73,8 +94,9 @@ For each environment (or once, if both are on the same server):
 
 **Settings → Environments**: create `dev` and `pro`.
 
-- `pro`: add **required reviewers** (the approval before a PRO deploy) and limit deployment
-  branches and tags to `main` and `v*`.
+- `pro`: limit deployment branches and tags to `main` and `v*`. Optionally add **required
+  reviewers** (an approval before every PRO deploy; see [Nightly PRO deploy](#nightly-pro-deploy)
+  for what that means at night).
 - In **each** environment add:
 
 | Kind | Name | Value |
@@ -106,7 +128,7 @@ DEV starts with the demo users (`admin` / `demo-admin`, `docent` / `demo-docent`
 
 - **DEV**: merge to `main` and watch *Actions → Deploy*.
 - **PRO**: publish a release on GitHub (e.g. tag `v1.2.0` on a commit that already runs in
-  DEV) and approve the deploy. Or start it by hand:
+  DEV). It goes to PRO the next night. To deploy right away, start it by hand:
 
   ```bash
   make deploy-pro REF=v1.2.0
@@ -114,7 +136,8 @@ DEV starts with the demo users (`admin` / `demo-admin`, `docent` / `demo-docent`
 
   (`gh workflow run deploy.yml -f environment=pro -f ref=v1.2.0`)
 - **Roll back PRO**: deploy an older release or commit the same way,
-  `make deploy-pro REF=<old sha>`.
+  `make deploy-pro REF=<old sha>`. Also mark the bad release as a pre-release (or delete it),
+  otherwise the next night deploys it again.
 - **Put an older commit on DEV**: `make deploy-dev REF=<sha>`.
 
 ## Backups
