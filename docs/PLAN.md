@@ -16,6 +16,11 @@ It replaces the earlier `vgt` app, and is rebuilt from scratch.
 - The code is open source. The class videos are never in the repository.
 - Polished enough to serve as a portfolio project.
 
+## Status (2026-11-11)
+
+Milestones 1 to 6 are built and merged. What is left is launching the real app (milestone 7),
+the portfolio work (milestone 8) and the mobile app (milestone 9). See [Milestones](#milestones).
+
 ## Stack
 
 | Part | Choice |
@@ -24,7 +29,7 @@ It replaces the earlier `vgt` app, and is rebuilt from scratch.
 | Web | React 19, Vite, TypeScript, TanStack Router, TanStack Query, Tailwind CSS v4 + shadcn/ui (accessible Radix components). Tests: Vitest, Playwright |
 | API client | Generated from the FastAPI OpenAPI schema (`openapi-typescript` + `openapi-fetch`), so web and mobile share the same types |
 | Mobile (later) | Expo (React Native) with Expo Router, reusing the API client and the shared logic |
-| Deploy | One container. FastAPI serves `/api/v1`, the protected videos (with range requests) and the built React app, `/admin` included. Traefik sits in front |
+| Deploy | One container. FastAPI serves `/api/v1`, the protected videos (with range requests) and the built React app, `/admin` included. A worker thread in the same process runs the video jobs. Traefik sits in front. Two environments, DEV and PRO, run the same image (see `docs/DEPLOY.md`) |
 
 ## Built with mobile in mind from day 1
 
@@ -55,16 +60,22 @@ users        id, username, password_hash, recovery_hash,
              role (student | teacher | admin), created_at, last_active_at
 groups       id, year, weekday, label, invite_code, active
 memberships  user_id, group_id          -- student: exactly 1, teacher: many
-words        id, gloss, year, lesson, list_number, notes,
-             status (draft | published), created_by, updated_by, timestamps
+words        id, gloss, year, lesson, list_number, position, notes,
+             status (draft | published), legacy_id, created_by, updated_by, timestamps
 clips        id, word_id, file, duration, thumb, source (legacy | recording | demo),
-             recorded_at, is_primary, archived, updated_at
-word_events  id, word_id, user_id, action, diff_json, at     -- audit log for words
+             recorded_at, is_primary, archived, created_at, updated_at
+word_events  id, word_id, user_id, action, diff_json, undone, at   -- audit log for words
 group_events id, user_id, from_group_id, to_group_id, by_user_id, at
-results      user_id, word_id, direction (w2s | s2w), correct, at
+results      id, user_id, word_id, direction (w2s | s2w), correct, at
 sessions     token_hash, user_id, client (web | mobile), expires_at
-jobs         id, kind (transcode | split), status, payload, result
+jobs         id, kind (transcode | split), status (queued | running | done | failed),
+             payload, result, error, created_by, timestamps
 ```
+
+- `words.position` is the order of a word within its list. `words.legacy_id` keeps the
+  `guid` from the old app.
+- A teacher's memberships are the groups they teach. A teacher who creates a group teaches it,
+  and can mark or unmark other groups as taught.
 
 - Words and clips are separate. A new recording becomes the primary clip and the old one
   is archived, so nothing is lost and a replacement can be undone.
@@ -77,9 +88,11 @@ jobs         id, kind (transcode | split), status, payload, result
 
 ### Students
 
-- Join through a group invite link, then log in. Recovery is by a one-time code.
-- Practise by year, lesson or list, in both directions (word → sign, sign → word). Answer
-  "Kende ik" / "Kende ik niet". At the end, repeat the words you missed.
+- Join through a group invite link, then log in. Recovery is by a one-time code. A logged-in
+  user can make a new recovery code in the profile (the old one stops working).
+- Practise by year, lesson or list, in one direction (word → sign, sign → word) or mixed,
+  optionally with a limited number of words. Answer "Kende ik" / "Kende ik niet", with undo
+  for the last answer. At the end, repeat the words you missed.
 - Browse and search the dictionary, with all clips of a word.
 - "Mijn moeilijke woorden": practise only the words you got wrong.
 - Profile: change your password, download your data, delete your account.
@@ -96,29 +109,34 @@ jobs         id, kind (transcode | split), status, payload, result
   4. Choose whether the new clip replaces the old one or is added as an extra clip.
 
   The teacher's new year 1 recordings come in this way.
-- **Groups:** create a group, rotate its invite link, list its members, reset a password.
-- **Moving students (teacher only):** move selected students to another group, or move a
+- **Groups:** create a group, mark which groups you teach, rotate its invite link, list its
+  members, reset a password.
+- **Moving students (teachers and admins):** move selected students to another group, or move a
   whole group at the start of the school year, for example "Jaar 1 · dinsdag → Jaar 2 · dinsdag".
   Every move is recorded.
 - No view of individual students' results.
 
 ### Admins
 
-- Manage teacher roles.
+- Manage roles, and create teacher or admin accounts with a temporary password.
 - The first admin is created from the command line (`vgt create-admin`).
 
 ## Data and media
 
-- **Legacy import** (`apps/api/scripts/import_legacy.py`): reads the old `lexicon.db`
+- **Legacy import** (`vgt import-legacy`, with `--dry-run`, `--draft` and `--report`;
+  `apps/api/scripts/import_legacy.py` is a wrapper around it): reads the old `lexicon.db`
   (`guid, word, year, list_number, video_file`) and its MP4 files. It creates one word per
   `(word, year, list_number)`, converts the videos to the standard encoding, makes thumbnails,
   keeps each old `guid` as `legacy_id`, and writes a report of anything that did not import
-  cleanly. Old progress (stored only in each student's browser) is not carried over.
+  cleanly. Try it in DEV or on a copy before running it in PRO. Old progress (stored only in each student's browser) is not carried over.
 - **Class videos** live in a volume on the server, outside the repository. They are only
   served to logged-in users.
 - **Demo media:** about 20 words recorded by the project author, published as a GitHub
   release asset rather than committed, so the repository stays small. `make demo` downloads
-  them and fills a demo database. The public demo instance uses only this data.
+  them and fills a demo database. Without the release asset, `make demo` uses generated test
+  clips. The public demo instance uses only the real demo videos.
+- **Backups:** `vgt backup` makes a safe copy of the database while the app runs. Every deploy
+  makes one first. A daily cron entry on the server adds more (see `docs/DEPLOY.md`).
 
 ## Licensing
 
@@ -129,24 +147,24 @@ jobs         id, kind (transcode | split), status, payload, result
 
 ## Milestones
 
-| # | Milestone |
-|---|---|
-| 1 | Monorepo setup: uv + pnpm workspaces, FastAPI and React skeletons, client generated from OpenAPI, Docker image, CI (lint, types, tests), deploy to a test subdomain |
-| 2 | Accounts, groups, roles, invite links, recovery codes, admin CLI, profile with export and delete |
-| 3 | Words and clips, legacy import tried on a copy of the real data, browse and search, protected video streaming |
-| 4 | Practice (`packages/core` + web UI), results, "Mijn moeilijke woorden" |
-| 5 | Admin: word editing, audit log, single clip upload, group management including moving students |
-| 6 | Admin: recording sessions (jobs, auto-split, matching to words, replacing clips). The new year 1 videos come in here |
-| 7 | Launch on `vgt.arnedb.be`, cron backups of the database and media, announce to the groups |
-| 8 | Portfolio: demo videos, public demo, README with architecture diagram and screenshots, `docs/case-study.md`, accessibility and Lighthouse pass |
-| 9 | Mobile (later): Expo app with login, practice and browse, offline clip caching. Publish via EAS to TestFlight and Play internal testing first |
+| # | Milestone | Status |
+|---|---|---|
+| 1 | Monorepo setup: uv + pnpm workspaces, FastAPI and React skeletons, client generated from OpenAPI, Docker image, CI (lint, types, tests, e2e, image smoke test), automatic deploy to DEV | Done |
+| 2 | Accounts, groups, roles, invite links, recovery codes, admin CLI, profile with export and delete | Done |
+| 3 | Words and clips, legacy import, browse and search, protected video streaming | Done in code. Still to do: try the import on a copy of the real data |
+| 4 | Practice (`packages/core` + web UI), results, "Mijn moeilijke woorden" | Done |
+| 5 | Admin: word editing, audit log with undo, single clip upload, group management including moving students | Done |
+| 6 | Admin: recording sessions (jobs, auto-split, matching to words, replacing clips) | Done in code. The new year 1 videos come in after launch |
+| 7 | Launch on `vgt.arnedb.be` (PRO): legacy import into PRO, first admin, first release, daily backup cron on the server, announce to the groups | To do. Deploy with backup and rollback is already in place |
+| 8 | Portfolio: demo videos as the `demo-media-v1` release asset, public demo, screenshots in the README (the architecture diagram is there), `docs/case-study.md`, accessibility and Lighthouse pass | To do |
+| 9 | Mobile (later): Expo app with login, practice and browse, offline clip caching. Publish via EAS to TestFlight and Play internal testing first | To do. API, auth, client and `packages/core` are ready for it (see `apps/mobile/README.md`) |
 
-Milestones 1 to 4 give a usable product. Milestone 6 is the largest.
+Milestones 1 to 4 give a usable product. Milestone 6 was the largest.
 
 ## Ground rules
 
 - UI text is in Dutch, code and docs are in English. All UI text lives in one place so a
   translation can be added later.
-- Keyboard-only practice works (space to reveal, ←/→ to answer).
+- Keyboard-only practice works (space or Enter to reveal, ←/→ to answer, Backspace or z to undo).
 - Secrets live only in GitHub secrets and the server `.env`, never in the repository.
-- Deploys only happen when CI passes.
+- Deploys only happen when CI passes. PRO only gets an image that already ran in DEV.
