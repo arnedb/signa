@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, StringConstraints
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
 
 from vgt.models import ClientKind, ClipSource, Direction, JobKind, JobStatus, Role, WordStatus
 
@@ -14,6 +14,7 @@ Username = Annotated[
 Password = Annotated[str, StringConstraints(min_length=8, max_length=200)]
 Weekday = Literal["maandag", "dinsdag", "woensdag", "donderdag", "vrijdag", "zaterdag", "zondag"]
 ClipMode = Literal["replace", "extra"]
+SplitMethod = Literal["motion", "freeze"]
 
 
 class HealthOut(BaseModel):
@@ -230,12 +231,40 @@ class SegmentsIn(BaseModel):
 
 
 class RecordingItem(Segment):
-    word_id: int
+    """A segment for an existing word (``word_id``) or for a new word (``gloss``)."""
+
+    word_id: int | None = None
+    gloss: (
+        Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
+        | None
+    ) = None
     mode: ClipMode = "replace"
+
+    @model_validator(mode="after")
+    def _one_target(self) -> "RecordingItem":
+        if (self.word_id is None) == (self.gloss is None):
+            raise ValueError("Give either word_id or gloss")
+        return self
 
 
 class RecordingApplyIn(BaseModel):
     items: list[RecordingItem] = Field(min_length=1)
+    # Where new words (items with a gloss) go. The lesson follows from the list number.
+    year: int | None = Field(None, ge=1, le=10)
+    list_number: Annotated[str, StringConstraints(strip_whitespace=True, max_length=16)] | None = (
+        None
+    )
+    # New words are drafts unless this is set.
+    publish: bool = False
+
+
+class SplitIn(BaseModel):
+    method: SplitMethod = "motion"
+
+
+class TrimIn(BaseModel):
+    start: float = Field(ge=0)
+    end: float = Field(gt=0)
 
 
 class RecordingOut(BaseModel):
@@ -246,6 +275,7 @@ class RecordingOut(BaseModel):
     error: str | None
     source_url: str | None
     duration: float | None
+    method: SplitMethod | None
     segments: list[Segment]
     applied: list[dict[str, Any]]
 

@@ -120,6 +120,34 @@ def attach_clip(db: Session, word: Word, clip: Clip, mode: str, user: User | Non
     log(db, word, user, "clip_add", {"clip": clip.id})
 
 
+def trim_clip(
+    db: Session, word: Word, clip: Clip, old: Clip, user: User | None, start: float, end: float
+) -> None:
+    """``clip`` is a shortened copy of ``old``: it takes its place, and ``old`` is archived."""
+    clip.word = word
+    db.add(clip)
+    db.flush()
+    was_primary = old.is_primary and not old.archived
+    old.archived = True
+    old.is_primary = False
+    if was_primary:
+        set_primary(word, clip)
+    _ensure_primary(word)
+    log(
+        db,
+        word,
+        user,
+        "clip_trim",
+        {
+            "clip": clip.id,
+            "old_clip": old.id,
+            "was_primary": was_primary,
+            "start": round(start, 3),
+            "end": round(end, 3),
+        },
+    )
+
+
 def archive_clip(db: Session, word: Word, clip: Clip, user: User | None) -> None:
     was_primary = clip.is_primary
     clip.archived = True
@@ -176,6 +204,16 @@ def undo(db: Session, event: WordEvent, user: User | None) -> WordEvent:
             log(
                 db, word, user, "clip_replace", {"clip": diff["old_clip"], "old_clip": diff["clip"]}
             )
+        case "clip_trim":
+            new, old = _clip(word, diff["clip"]), _clip(word, diff["old_clip"])
+            if new:
+                new.archived = True
+                new.is_primary = False
+            if old:
+                old.archived = False
+                if diff.get("was_primary"):
+                    set_primary(word, old)
+            _ensure_primary(word)
         case "clip_archive":
             clip = _clip(word, diff["clip"])
             if clip:

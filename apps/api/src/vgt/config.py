@@ -30,9 +30,15 @@ class Settings(BaseSettings):
     # Encoding settings for every clip. Fixed so all clips play the same everywhere.
     video_height: int = 480
     video_crf: int = 26
-    # Auto-split settings for recording sessions (ffmpeg freezedetect).
+    # Auto-split for recording sessions. "motion" finds the rests between signs, with a
+    # threshold that adapts to each video; "freeze" uses ffmpeg freezedetect (truly still frames).
+    split_method: Literal["motion", "freeze"] = "motion"
+    # motion: the quietest share of the video (in %) that counts as rest.
+    split_rest_percentile: float = 30
+    # freeze: noise tolerance and the shortest still moment (s).
     split_noise: float = 0.003
     split_min_freeze: float = 0.6
+    # Both: parts shorter than this (s) are dropped.
     split_min_clip: float = 0.6
 
 

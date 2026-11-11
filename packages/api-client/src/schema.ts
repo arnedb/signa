@@ -415,6 +415,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/clips/{clip_id}/trim": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Trim Clip
+         * @description Cut the start and/or end off a clip. The shortened copy takes the clip's place in the
+         *     background and the original is archived, so the trim can be undone. Poll the job.
+         */
+        post: operations["admin_trim_clip"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/clips/{clip_id}/primary": {
         parameters: {
             query?: never;
@@ -541,6 +562,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/recordings/{job_id}/split": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Split Again
+         * @description Detect the cut points again, for example with the other method. Replaces the segments.
+         */
+        post: operations["admin_split_again"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/recordings/{job_id}/apply": {
         parameters: {
             query?: never;
@@ -552,7 +593,8 @@ export interface paths {
         put?: never;
         /**
          * Apply Recording
-         * @description Cut each matched segment into a clip for its word (replace or add as extra).
+         * @description Cut each segment into a clip: for an existing word (replace or add as extra), or for
+         *     a new word on the chosen year and list (created as a draft unless ``publish``).
          */
         post: operations["admin_apply_recording"];
         delete?: never;
@@ -1121,15 +1163,29 @@ export interface components {
         RecordingApplyIn: {
             /** Items */
             items: components["schemas"]["RecordingItem"][];
+            /** Year */
+            year?: number | null;
+            /** List Number */
+            list_number?: string | null;
+            /**
+             * Publish
+             * @default false
+             */
+            publish?: boolean;
         };
-        /** RecordingItem */
+        /**
+         * RecordingItem
+         * @description A segment for an existing word (``word_id``) or for a new word (``gloss``).
+         */
         RecordingItem: {
             /** Start */
             start: number;
             /** End */
             end: number;
             /** Word Id */
-            word_id: number;
+            word_id?: number | null;
+            /** Gloss */
+            gloss?: string | null;
             /**
              * Mode
              * @default replace
@@ -1155,6 +1211,8 @@ export interface components {
             source_url: string | null;
             /** Duration */
             duration: number | null;
+            /** Method */
+            method: ("motion" | "freeze") | null;
             /** Segments */
             segments: components["schemas"]["Segment"][];
             /** Applied */
@@ -1239,12 +1297,28 @@ export interface components {
             /** Segments */
             segments: components["schemas"]["Segment"][];
         };
+        /** SplitIn */
+        SplitIn: {
+            /**
+             * Method
+             * @default motion
+             * @enum {string}
+             */
+            method?: "motion" | "freeze";
+        };
         /** TempPasswordOut */
         TempPasswordOut: {
             /** Username */
             username: string;
             /** Temporary Password */
             temporary_password: string;
+        };
+        /** TrimIn */
+        TrimIn: {
+            /** Start */
+            start: number;
+            /** End */
+            end: number;
         };
         /** UserCreate */
         UserCreate: {
@@ -2120,6 +2194,41 @@ export interface operations {
             };
         };
     };
+    admin_trim_clip: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                clip_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TrimIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     admin_clip_primary: {
         parameters: {
             query?: never;
@@ -2345,6 +2454,41 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecordingOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    admin_split_again: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SplitIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
                 headers: {
                     [name: string]: unknown;
                 };

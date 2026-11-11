@@ -1105,6 +1105,59 @@
         }
       }
     },
+    "/api/v1/admin/clips/{clip_id}/trim": {
+      "post": {
+        "tags": [
+          "admin: words"
+        ],
+        "summary": "Trim Clip",
+        "description": "Cut the start and/or end off a clip. The shortened copy takes the clip's place in the\nbackground and the original is archived, so the trim can be undone. Poll the job.",
+        "operationId": "admin_trim_clip",
+        "parameters": [
+          {
+            "name": "clip_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Clip Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TrimIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/admin/clips/{clip_id}/primary": {
       "post": {
         "tags": [
@@ -1433,13 +1486,66 @@
         }
       }
     },
+    "/api/v1/admin/recordings/{job_id}/split": {
+      "post": {
+        "tags": [
+          "admin: recordings"
+        ],
+        "summary": "Split Again",
+        "description": "Detect the cut points again, for example with the other method. Replaces the segments.",
+        "operationId": "admin_split_again",
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Job Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SplitIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordingOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/admin/recordings/{job_id}/apply": {
       "post": {
         "tags": [
           "admin: recordings"
         ],
         "summary": "Apply Recording",
-        "description": "Cut each matched segment into a clip for its word (replace or add as extra).",
+        "description": "Cut each segment into a clip: for an existing word (replace or add as extra), or for\na new word on the chosen year and list (created as a draft unless ``publish``).",
         "operationId": "admin_apply_recording",
         "parameters": [
           {
@@ -3082,6 +3188,36 @@
             "type": "array",
             "minItems": 1,
             "title": "Items"
+          },
+          "year": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 10.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Year"
+          },
+          "list_number": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 16
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "List Number"
+          },
+          "publish": {
+            "type": "boolean",
+            "title": "Publish",
+            "default": false
           }
         },
         "type": "object",
@@ -3103,8 +3239,28 @@
             "title": "End"
           },
           "word_id": {
-            "type": "integer",
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Word Id"
+          },
+          "gloss": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gloss"
           },
           "mode": {
             "type": "string",
@@ -3119,10 +3275,10 @@
         "type": "object",
         "required": [
           "start",
-          "end",
-          "word_id"
+          "end"
         ],
-        "title": "RecordingItem"
+        "title": "RecordingItem",
+        "description": "A segment for an existing word (``word_id``) or for a new word (``gloss``)."
       },
       "RecordingOut": {
         "properties": {
@@ -3175,6 +3331,21 @@
             ],
             "title": "Duration"
           },
+          "method": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "motion",
+                  "freeze"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Method"
+          },
           "segments": {
             "items": {
               "$ref": "#/components/schemas/Segment"
@@ -3200,6 +3371,7 @@
           "error",
           "source_url",
           "duration",
+          "method",
           "segments",
           "applied"
         ],
@@ -3425,6 +3597,21 @@
         ],
         "title": "SegmentsIn"
       },
+      "SplitIn": {
+        "properties": {
+          "method": {
+            "type": "string",
+            "enum": [
+              "motion",
+              "freeze"
+            ],
+            "title": "Method",
+            "default": "motion"
+          }
+        },
+        "type": "object",
+        "title": "SplitIn"
+      },
       "TempPasswordOut": {
         "properties": {
           "username": {
@@ -3442,6 +3629,26 @@
           "temporary_password"
         ],
         "title": "TempPasswordOut"
+      },
+      "TrimIn": {
+        "properties": {
+          "start": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Start"
+          },
+          "end": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "End"
+          }
+        },
+        "type": "object",
+        "required": [
+          "start",
+          "end"
+        ],
+        "title": "TrimIn"
       },
       "UserCreate": {
         "properties": {

@@ -18,7 +18,8 @@ It replaces the earlier `vgt` app, and is rebuilt from scratch.
 
 ## Status (2026-11-11)
 
-Milestones 1 to 6 are built and merged. What is left is launching the real app (milestone 7),
+Milestones 1 to 6 are built and merged. The labelling tool of the old app is ported too
+(see [From the old labelling tool](#from-the-old-labelling-tool)). What is left is launching the real app (milestone 7),
 the portfolio work (milestone 8) and the mobile app (milestone 9). See [Milestones](#milestones).
 
 ## Stack
@@ -101,14 +102,26 @@ jobs         id, kind (transcode | split), status (queued | running | done | fai
 ### Teachers (`/admin`)
 
 - **Words:** edit, draft and publish, history with undo, several clips per word.
+- **Trim a clip:** cut the start and/or end off a clip, with draggable start and end handles,
+  frame steps and keyboard shortcuts (I/O, ←/→, Space). The shortened copy takes the clip's
+  place and the original is archived, so a trim can be undone from the history.
 - **Recording sessions:**
   1. Upload a long video.
-  2. The app splits it automatically with ffmpeg `freezedetect`. The teacher can adjust the cut points.
-  3. Match each clip to an existing word, with suggestions in lesson order and the old and
-     new clip side by side.
-  4. Choose whether the new clip replaces the old one or is added as an extra clip.
+  2. The app splits it automatically. The default method finds the rests between signs (the
+     hands come down): it measures how much the picture changes and uses a threshold that adapts
+     to each video, so camera noise and a signer who sways a little do not matter. The other
+     method, ffmpeg `freezedetect`, cuts more tightly when the picture is truly still between
+     words. The teacher can split again with the other method.
+  3. Adjust the cut points on a timeline under the video (S splits at the playhead, Space plays,
+     ←/→ steps), or per segment with start and end fields.
+  4. Match each segment to an existing word, with suggestions in lesson order and the old and
+     new clip side by side, or make it a new word on the chosen year and list. New words are
+     drafts unless "publish now" is ticked. A name that is already on that list is refused (choose
+     the existing word instead); the same name on another list becomes an extra word.
+  5. For existing words, choose whether the new clip replaces the old one or is added as an
+     extra clip.
 
-  The teacher's new year 1 recordings come in this way.
+  The teacher's new year 1 recordings come in this way, and so do new lists.
 - **Groups:** create a group, mark which groups you teach, rotate its invite link, list its
   members, reset a password.
 - **Moving students (teachers and admins):** move selected students to another group, or move a
@@ -138,6 +151,20 @@ jobs         id, kind (transcode | split), status (queued | running | done | fai
 - **Backups:** `vgt backup` makes a safe copy of the database while the app runs. Every deploy
   makes one first. A daily cron entry on the server adds more (see `docs/DEPLOY.md`).
 
+## From the old labelling tool
+
+The old app had a separate manager (`manager/server.py` in the `vgt` repository) to import,
+label and trim videos. Its features now live in `/admin`:
+
+| Old manager | Here |
+|---|---|
+| Upload a long video, auto-detect the rests between signs (OpenCV motion, 30th percentile) | Recording sessions, split method "rest moments" (`media.detect_motion`). Same idea, measured with ffmpeg so OpenCV is not needed. The threshold sits a little above the quietest 30 %, so a rest is not broken in two by small wobbles. A video that starts or ends while signing keeps its first or last sign |
+| Mark split points with S, undo, click a marker to delete it | Timeline with numbered segments, S to split at the playhead, delete or adjust a segment |
+| Label each segment with a new word on a year and list; skip words that already exist on that list | "New word" per segment (or for all empty segments at once), on the chosen year and list. A duplicate on the same list is refused, a name on another list is shown as an extra word |
+| Lexicon tab: change a word's name, year or list | Word editor (with history and undo) |
+| Lexicon tab: trim a clip with in/out handles, frame steps and I/O keys | "Trim" on each clip. The trimmed copy is re-encoded with the standard settings, and the original is archived instead of overwritten |
+| Delete words and their videos, one by one or in a batch | Not ported: clips are archived, not deleted, and words go back to draft. Nothing is lost by accident |
+
 ## Licensing
 
 - **Code:** AGPL-3.0 (see `LICENSE`). Anyone may use and change it. Anyone who runs a changed
@@ -154,7 +181,7 @@ jobs         id, kind (transcode | split), status (queued | running | done | fai
 | 3 | Words and clips, legacy import, browse and search, protected video streaming | Done in code. Still to do: try the import on a copy of the real data |
 | 4 | Practice (`packages/core` + web UI), results, "Mijn moeilijke woorden" | Done |
 | 5 | Admin: word editing, audit log with undo, single clip upload, group management including moving students | Done |
-| 6 | Admin: recording sessions (jobs, auto-split, matching to words, replacing clips) | Done in code. The new year 1 videos come in after launch |
+| 6 | Admin: recording sessions (jobs, auto-split, matching to words, replacing clips), plus the old labelling tool: rest-based split, timeline, new words from a recording, trimming clips | Done in code. The new year 1 videos come in after launch. Tune the split on a real class video (`VGT_SPLIT_REST_PERCENTILE`) |
 | 7 | Launch on `vgt.arnedb.be` (PRO): legacy import into PRO, first admin, first release, daily backup cron on the server, announce to the groups | To do. Deploy with backup and rollback is already in place |
 | 8 | Portfolio: demo videos as the `demo-media-v1` release asset, public demo, screenshots in the README (the architecture diagram is there), `docs/case-study.md`, accessibility and Lighthouse pass | To do |
 | 9 | Mobile (later): Expo app with login, practice and browse, offline clip caching. Publish via EAS to TestFlight and Play internal testing first | To do. API, auth, client and `packages/core` are ready for it (see `apps/mobile/README.md`) |

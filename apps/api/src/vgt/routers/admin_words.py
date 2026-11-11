@@ -9,7 +9,7 @@ from vgt.jobs import enqueue
 from vgt.models import Clip, JobKind, Word, WordEvent, WordStatus
 from vgt.routers.uploads import save_upload
 from vgt.routers.words import word_query
-from vgt.schemas import AdminWordOut, JobOut, WordCreate, WordEventOut, WordUpdate
+from vgt.schemas import AdminWordOut, JobOut, TrimIn, WordCreate, WordEventOut, WordUpdate
 from vgt.services import words as svc
 
 router = APIRouter(prefix="/admin", tags=["admin: words"])
@@ -109,6 +109,33 @@ def upload_clip(
         db,
         JobKind.transcode,
         {"src": rel, "word_id": word_id, "mode": mode, "source": "recording", "delete_src": True},
+        user,
+    )
+    return JobOut.model_validate(job)
+
+
+@router.post("/clips/{clip_id}/trim", response_model=JobOut, status_code=202)
+def trim_clip(clip_id: int, body: TrimIn, user: Teacher, db: DB) -> JobOut:
+    """Cut the start and/or end off a clip. The shortened copy takes the clip's place in the
+    background and the original is archived, so the trim can be undone. Poll the job."""
+    clip = _clip(db, clip_id)
+    if clip.archived:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Restore the clip before trimming it")
+    if body.end <= body.start or body.end > clip.duration + 0.05:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "The cut points are outside the clip")
+    if body.end - body.start < 0.2:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "The clip would be too short")
+    job = enqueue(
+        db,
+        JobKind.transcode,
+        {
+            "src": clip.file,
+            "word_id": clip.word_id,
+            "trim": clip.id,
+            "start": body.start,
+            "end": min(body.end, clip.duration),
+            "source": clip.source.value,
+        },
         user,
     )
     return JobOut.model_validate(job)

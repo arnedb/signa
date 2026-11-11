@@ -6,9 +6,10 @@ practise the signs from your course, by year, lesson or list.
 - **Students** join their group with an invite link, practise in both directions
   (word → sign, sign → word) with “Kende ik” / “Kende ik niet”, repeat what they missed,
   browse the dictionary and practise their difficult words. No email, no real name.
-- **Teachers** manage the word list with drafts, history and undo, upload clips, and record
-  whole lessons at once: the app splits a long video on the pauses, the teacher matches each
-  part to a word and chooses to replace the old clip or add an extra one.
+- **Teachers** manage the word list with drafts, history and undo, upload and trim clips, and
+  record whole lessons at once: the app splits a long video on the rests between signs, the
+  teacher adjusts the cuts on a timeline, matches each part to a word or makes it a new word,
+  and chooses to replace the old clip or add an extra one.
 - **Groups** are a course year plus a weekday (“Jaar 1 · dinsdag”). Teachers move students
   between groups, one by one or a whole group at the start of the year. Every move is logged.
 

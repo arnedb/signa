@@ -25,43 +25,60 @@ def enqueue(db: Session, kind: JobKind, payload: dict[str, Any], user: User | No
     return job
 
 
+def wake() -> None:
+    """Tell the worker that a job was queued (or queued again)."""
+    _wake.set()
+
+
 def _run_transcode(db: Session, job: Job) -> dict[str, Any]:
     p = job.payload
     word = db.get(Word, p["word_id"])
     if word is None:
         raise media.MediaError("Word no longer exists")
+    trimmed = db.get(Clip, p["trim"]) if p.get("trim") else None
+    if p.get("trim") and (trimmed is None or trimmed.word_id != word.id):
+        raise media.MediaError("Clip no longer exists")
     files = media.make_clip(media.media_path(p["src"]), p.get("start"), p.get("end"))
     clip = Clip(
         file=files.file,
         thumb=files.thumb,
         duration=files.duration,
         source=ClipSource(p.get("source", "recording")),
-        recorded_at=utcnow(),
+        recorded_at=trimmed.recorded_at if trimmed else utcnow(),
     )
     user = db.get(User, job.created_by) if job.created_by else None
-    word_service.attach_clip(db, word, clip, p.get("mode", "replace"), user)
+    if trimmed is not None:
+        word_service.trim_clip(db, word, clip, trimmed, user, p["start"], p["end"])
+    else:
+        word_service.attach_clip(db, word, clip, p.get("mode", "replace"), user)
     if p.get("delete_src"):
         media.media_path(p["src"]).unlink(missing_ok=True)
     return {"clip_id": clip.id, "word_id": word.id}
 
 
 def _run_split(db: Session, job: Job) -> dict[str, Any]:
-    s = get_settings()
-    upload = media.media_path(job.payload["upload"])
-    # A browser-friendly copy of the whole recording, used to preview and cut.
-    source_rel = media.new_rel("sources", ".mp4")
-    source = media.media_path(source_rel)
-    media.transcode(upload, source)
-    upload.unlink(missing_ok=True)
+    previous = job.result or {}
+    method = job.payload.get("method") or get_settings().split_method
+    if previous.get("source"):
+        # Split again (another method): the converted copy is already there.
+        source_rel = previous["source"]
+        source = media.media_path(source_rel)
+    else:
+        upload = media.media_path(job.payload["upload"])
+        # A browser-friendly copy of the whole recording, used to preview and cut.
+        source_rel = media.new_rel("sources", ".mp4")
+        source = media.media_path(source_rel)
+        media.transcode(upload, source)
+        upload.unlink(missing_ok=True)
     duration = media.probe_duration(source)
-    segments = media.detect_segments(
-        source, duration, s.split_noise, s.split_min_freeze, s.split_min_clip
-    )
+    segments = media.detect_segments(source, duration, method)
     return {
+        **previous,
         "source": source_rel,
         "duration": round(duration, 3),
+        "method": method,
         "segments": [{"start": a, "end": b} for a, b in segments],
-        "applied": [],
+        "applied": previous.get("applied", []),
     }
 
 
@@ -73,10 +90,13 @@ def run_job(db: Session, job: Job) -> None:
     except Exception as exc:
         db.rollback()
         log.exception("Job %s failed", job.id)
-        job.status = JobStatus.failed
         job.error = str(exc) or exc.__class__.__name__
+        # A recording that was split before stays usable when splitting it again fails.
+        resplit = job.kind == JobKind.split and (job.result or {}).get("source")
+        job.status = JobStatus.done if resplit else JobStatus.failed
     else:
         job.status = JobStatus.done
+        job.error = None
         job.result = result
     db.commit()
 

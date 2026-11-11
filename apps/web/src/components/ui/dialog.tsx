@@ -10,19 +10,21 @@ export function Dialog({
   title,
   description,
   children,
+  wide = false,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   title: string;
   description?: string;
   children: ReactNode;
+  wide?: boolean;
 }) {
   return (
     <D.Root open={open} onOpenChange={onOpenChange}>
       <D.Portal>
         <D.Overlay className="fixed inset-0 z-40 bg-black/40" />
         <D.Content
-          className="fixed top-1/2 left-1/2 z-50 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-lg border bg-card p-6 shadow-lg"
+          className={`fixed top-1/2 left-1/2 z-50 w-[calc(100%-2rem)] ${wide ? "max-h-[calc(100dvh-2rem)] max-w-3xl overflow-y-auto" : "max-w-md"} -translate-x-1/2 -translate-y-1/2 rounded-lg border bg-card p-6 shadow-lg`}
           {...(description ? {} : { "aria-describedby": undefined })}
         >
           <D.Title className="pr-8 text-lg font-semibold">{title}</D.Title>
