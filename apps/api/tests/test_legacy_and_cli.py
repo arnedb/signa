@@ -5,11 +5,12 @@ from pathlib import Path
 from sqlalchemy import create_engine, inspect, select
 from sqlalchemy.orm import Session
 
+from tests.conftest import make_org
 from vgt import db as vgt_db
 from vgt.config import get_settings
 from vgt.db import Base
 from vgt.legacy import import_legacy, lesson_of
-from vgt.models import Word
+from vgt.models import Organisation, Word
 
 
 def _lexicon(tmp_path: Path, sample: Path) -> tuple[Path, Path]:
@@ -37,12 +38,12 @@ def _lexicon(tmp_path: Path, sample: Path) -> tuple[Path, Path]:
     return path, videos
 
 
-def test_import_legacy(db: Session, tmp_path: Path, sample_video: Path) -> None:
+def test_import_legacy(db: Session, tmp_path: Path, sample_video: Path, org: Organisation) -> None:
     lexicon, videos = _lexicon(tmp_path, sample_video)
-    dry = import_legacy(db, lexicon, videos, dry_run=True)
+    dry = import_legacy(db, org.id, lexicon, videos, dry_run=True)
     assert dry.words_created == 0 and len(dry.problems) == 1
 
-    report = import_legacy(db, lexicon, videos, workers=2)
+    report = import_legacy(db, org.id, lexicon, videos, workers=2)
     assert report.words_created == 3
     assert report.clips_created == 3
     assert [p["guid"] for p in report.problems] == ["g4"]
@@ -56,8 +57,12 @@ def test_import_legacy(db: Session, tmp_path: Path, sample_video: Path) -> None:
     assert words[0].legacy_id == "g1"
     assert "| g4 | kat |" in report.to_markdown()
 
-    again = import_legacy(db, lexicon, videos)
+    again = import_legacy(db, org.id, lexicon, videos)
     assert again.words_created == 0
+
+    # Another school can import the same list: its words are its own.
+    other = make_org(db, "other", "Other")
+    assert import_legacy(db, other.id, lexicon, videos).words_created == 3
 
 
 def test_lesson_of() -> None:
@@ -83,22 +88,23 @@ def test_migrations_match_models(tmp_path: Path, monkeypatch) -> None:
 
 
 def test_demo_seed(db: Session) -> None:
-    from vgt.demo import DEMO_WORDS, seed_demo
+    from vgt.demo import DEMO_WORDS, SECOND_WORDS, seed_demo
 
     counts = seed_demo(db)
-    assert counts["words"] == sum(len(v) for v in DEMO_WORDS.values())
+    words = [*DEMO_WORDS.values(), *SECOND_WORDS.values()]
+    assert counts["words"] == sum(len(v) for v in words)
     assert counts["users"] == 3
     assert seed_demo(db)["words"] == 0
 
 
-def test_backup_keeps_newest(db: Session, tmp_path: Path, monkeypatch) -> None:
+def test_backup_keeps_newest(db: Session, tmp_path: Path, monkeypatch, org: Organisation) -> None:
     import os
 
     from vgt.backup import backup
 
     monkeypatch.setenv("VGT_BACKUP_DIR", str(tmp_path / "backups"))
     get_settings.cache_clear()
-    db.add(Word(gloss="huis", year=1))
+    db.add(Word(org_id=org.id, gloss="huis", year=1))
     db.commit()
     paths = []
     for i in range(3):

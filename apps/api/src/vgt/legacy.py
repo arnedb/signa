@@ -91,6 +91,7 @@ def read_rows(db_path: Path) -> list[LegacyRow]:
 
 def import_legacy(
     db: Session,
+    org_id: int,
     lexicon: Path,
     video_dir: Path,
     *,
@@ -98,9 +99,11 @@ def import_legacy(
     workers: int | None = None,
     status: WordStatus = WordStatus.published,
 ) -> Report:
+    """Import into one organisation. Rows already imported there are skipped."""
     report = Report()
     rows = read_rows(lexicon)
-    done_guids = set(db.scalars(select(Word.legacy_id).where(Word.legacy_id.is_not(None))))
+    in_org = select(Word).where(Word.org_id == org_id)
+    done_guids = {w.legacy_id for w in db.scalars(in_org) if w.legacy_id is not None}
 
     todo: list[tuple[LegacyRow, Path]] = []
     for row in rows:
@@ -137,7 +140,7 @@ def import_legacy(
         encoded = list(pool.map(encode, todo))
 
     by_key: dict[tuple[str, int, str | None], Word] = {
-        (w.gloss.lower(), w.year, w.list_number): w for w in db.scalars(select(Word))
+        (w.gloss.lower(), w.year, w.list_number): w for w in db.scalars(in_org)
     }
     positions: dict[tuple[int, str | None], int] = {}
     for (row, _path), files in zip(todo, encoded, strict=True):
@@ -147,6 +150,7 @@ def import_legacy(
             pos = positions.get((row.year, row.list_number), 0) + 1
             positions[(row.year, row.list_number)] = pos
             word = Word(
+                org_id=org_id,
                 gloss=row.word,
                 year=row.year,
                 lesson=lesson_of(row.list_number),

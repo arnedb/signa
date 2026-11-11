@@ -27,38 +27,43 @@ def _recording_out(job: Job) -> RecordingOut:
     )
 
 
-def _recording(db: DB, job_id: int) -> Job:
+def _recording(db: DB, ctx: Teacher, job_id: int) -> Job:
     job = db.get(Job, job_id)
-    if job is None or job.kind != JobKind.split:
+    if job is None or job.kind != JobKind.split or job.org_id != ctx.org.id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Recording not found")
     return job
 
 
 @router.get("/jobs/{job_id}", response_model=JobOut)
-def get_job(job_id: int, _user: Teacher, db: DB) -> JobOut:
+def get_job(job_id: int, ctx: Teacher, db: DB) -> JobOut:
     job = db.get(Job, job_id)
-    if job is None:
+    if job is None or job.org_id != ctx.org.id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Job not found")
     return JobOut.model_validate(job)
 
 
 @router.get("/recordings", response_model=list[RecordingOut])
-def list_recordings(_user: Teacher, db: DB) -> list[RecordingOut]:
-    jobs = db.scalars(select(Job).where(Job.kind == JobKind.split).order_by(Job.id.desc()))
+def list_recordings(ctx: Teacher, db: DB) -> list[RecordingOut]:
+    jobs = db.scalars(
+        select(Job)
+        .where(Job.kind == JobKind.split, Job.org_id == ctx.org.id)
+        .order_by(Job.id.desc())
+    )
     return [_recording_out(j) for j in jobs]
 
 
 @router.post("/recordings", response_model=RecordingOut, status_code=202)
-def upload_recording(user: Teacher, db: DB, file: Annotated[UploadFile, File()]) -> RecordingOut:
+def upload_recording(ctx: Teacher, db: DB, file: Annotated[UploadFile, File()]) -> RecordingOut:
     """Upload a long video. It is converted and split on the pauses in the background."""
     rel = save_upload(file)
-    job = enqueue(db, JobKind.split, {"upload": rel, "filename": file.filename or "video"}, user)
+    payload = {"upload": rel, "filename": file.filename or "video"}
+    job = enqueue(db, JobKind.split, payload, ctx.user, ctx.org.id)
     return _recording_out(job)
 
 
 @router.get("/recordings/{job_id}", response_model=RecordingOut)
-def get_recording(job_id: int, _user: Teacher, db: DB) -> RecordingOut:
-    return _recording_out(_recording(db, job_id))
+def get_recording(job_id: int, ctx: Teacher, db: DB) -> RecordingOut:
+    return _recording_out(_recording(db, ctx, job_id))
 
 
 def _check_segments(job: Job, segments: list[Segment]) -> None:
@@ -69,9 +74,9 @@ def _check_segments(job: Job, segments: list[Segment]) -> None:
 
 
 @router.put("/recordings/{job_id}/segments", response_model=RecordingOut)
-def save_segments(job_id: int, body: SegmentsIn, _user: Teacher, db: DB) -> RecordingOut:
+def save_segments(job_id: int, body: SegmentsIn, ctx: Teacher, db: DB) -> RecordingOut:
     """Save adjusted cut points."""
-    job = _recording(db, job_id)
+    job = _recording(db, ctx, job_id)
     if job.status != JobStatus.done:
         raise HTTPException(status.HTTP_409_CONFLICT, "The recording is not ready yet")
     _check_segments(job, body.segments)
@@ -82,14 +87,15 @@ def save_segments(job_id: int, body: SegmentsIn, _user: Teacher, db: DB) -> Reco
 
 
 @router.post("/recordings/{job_id}/apply", response_model=list[JobOut], status_code=202)
-def apply_recording(job_id: int, body: RecordingApplyIn, user: Teacher, db: DB) -> list[JobOut]:
+def apply_recording(job_id: int, body: RecordingApplyIn, ctx: Teacher, db: DB) -> list[JobOut]:
     """Cut each matched segment into a clip for its word (replace or add as extra)."""
-    job = _recording(db, job_id)
+    job = _recording(db, ctx, job_id)
     if job.status != JobStatus.done or not job.result:
         raise HTTPException(status.HTTP_409_CONFLICT, "The recording is not ready yet")
     _check_segments(job, list(body.items))
-    missing = {i.word_id for i in body.items} - set(
-        db.scalars(select(Word.id).where(Word.id.in_([i.word_id for i in body.items])))
+    ids = [i.word_id for i in body.items]
+    missing = set(ids) - set(
+        db.scalars(select(Word.id).where(Word.id.in_(ids), Word.org_id == ctx.org.id))
     )
     if missing:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, f"Unknown words: {sorted(missing)}")
@@ -108,7 +114,8 @@ def apply_recording(job_id: int, body: RecordingApplyIn, user: Teacher, db: DB) 
                 "source": "recording",
                 "recording_id": job.id,
             },
-            user,
+            ctx.user,
+            ctx.org.id,
         )
         jobs.append(child)
         applied.append({**item.model_dump(), "job_id": child.id})

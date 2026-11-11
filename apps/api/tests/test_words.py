@@ -4,7 +4,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
 from vgt import jobs
-from vgt.models import Word, WordStatus
+from vgt.models import Organisation, Word, WordStatus
 
 
 def _create(client: TestClient, **kw) -> dict:
@@ -98,8 +98,8 @@ def test_clip_upload_replace_and_undo(teacher: TestClient, db: Session, sample_v
     assert r.headers["content-type"] == "video/mp4"
 
 
-def test_media_requires_login(app_client: TestClient, db: Session) -> None:
-    word = Word(gloss="x", year=1, status=WordStatus.published)
+def test_media_requires_login(app_client: TestClient, db: Session, org: Organisation) -> None:
+    word = Word(org_id=org.id, gloss="x", year=1, status=WordStatus.published)
     db.add(word)
     db.commit()
     assert app_client.get("/api/v1/media/clips/1").status_code == 401

@@ -17,8 +17,10 @@ log = logging.getLogger("vgt.jobs")
 _wake = threading.Event()
 
 
-def enqueue(db: Session, kind: JobKind, payload: dict[str, Any], user: User | None) -> Job:
-    job = Job(kind=kind, payload=payload, created_by=user.id if user else None)
+def enqueue(
+    db: Session, kind: JobKind, payload: dict[str, Any], user: User | None, org_id: int | None
+) -> Job:
+    job = Job(kind=kind, payload=payload, created_by=user.id if user else None, org_id=org_id)
     db.add(job)
     db.commit()
     _wake.set()

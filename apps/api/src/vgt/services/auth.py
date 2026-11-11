@@ -7,8 +7,9 @@ from sqlalchemy.orm import Session
 from vgt.config import get_settings
 from vgt.db import utcnow
 from vgt.models import AuthSession, ClientKind, User
-from vgt.schemas import LoginOut, Me
+from vgt.schemas import LoginOut
 from vgt.security import hash_token, new_token
+from vgt.services.context import me_out
 
 
 def start_session(db: Session, user: User, client: ClientKind, response: Response) -> LoginOut:
@@ -25,7 +26,7 @@ def start_session(db: Session, user: User, client: ClientKind, response: Respons
     user.last_active_at = utcnow()
     db.commit()
     db.refresh(user)
-    me = Me.model_validate(user)
+    me = me_out(db, user)
     if client == ClientKind.mobile:
         return LoginOut(user=me, token=token)
     response.set_cookie(

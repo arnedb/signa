@@ -109,6 +109,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/context": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set Context
+         * @description Choose the school (and group) to work in. Words, practice and /admin follow it.
+         */
+        put: operations["set_context"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/join": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Join
+         * @description Join another group with an invite link, keeping the same account.
+         */
+        post: operations["join"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/password": {
         parameters: {
             query?: never;
@@ -189,7 +229,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Save Results */
+        /**
+         * Save Results
+         * @description Save answers. Words outside the user's schools are ignored.
+         */
         post: operations["save_results"];
         delete?: never;
         options?: never;
@@ -206,7 +249,7 @@ export interface paths {
         };
         /**
          * Difficult Words
-         * @description Published words whose most recent answer was wrong.
+         * @description Published words of the current school whose most recent answer was wrong.
          */
         get: operations["difficult_words"];
         put?: never;
@@ -226,7 +269,9 @@ export interface paths {
         };
         /**
          * List Words
-         * @description Published words, in course order. ``with_clip`` keeps only words that have a clip.
+         * @description Published words of the current school, in course order.
+         *
+         *     ``with_clip`` keeps only words that have a clip.
          */
         get: operations["list_words"];
         put?: never;
@@ -263,7 +308,7 @@ export interface paths {
         };
         /**
          * Catalog
-         * @description Years, lessons and lists that have published words, with counts.
+         * @description Years, lessons and lists of the current school that have published words, with counts.
          */
         get: operations["catalog"];
         put?: never;
@@ -716,7 +761,9 @@ export interface paths {
         put?: never;
         /**
          * Reset Password
-         * @description Give a user a temporary password. Teachers can reset students; admins anyone.
+         * @description Give a member of the school a temporary password.
+         *
+         *     Teachers can reset students; admins anyone in the school except a superadmin.
          */
         post: operations["admin_reset_password"];
         delete?: never;
@@ -737,7 +784,7 @@ export interface paths {
         put?: never;
         /**
          * Create User
-         * @description Create a teacher (or admin) account with a temporary password.
+         * @description Add someone to the school: an existing account, or a new one with a temporary password.
          */
         post: operations["admin_create_user"];
         delete?: never;
@@ -761,6 +808,81 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/users/{user_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Remove User
+         * @description Remove someone from the school and its groups. The account itself stays.
+         */
+        delete: operations["admin_remove_user"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/languages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Languages */
+        get: operations["list_languages"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/organisations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Orgs */
+        get: operations["admin_list_orgs"];
+        put?: never;
+        /**
+         * Create Org
+         * @description Create a school, optionally with its first admin (an existing or a new account).
+         */
+        post: operations["admin_create_org"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/organisations/{org_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Org */
+        patch: operations["admin_update_org"];
         trace?: never;
     };
     "/api/v1/health": {
@@ -890,6 +1012,13 @@ export interface components {
          * @enum {string}
          */
         ClipSource: "legacy" | "recording" | "demo";
+        /** ContextIn */
+        ContextIn: {
+            /** Org Id */
+            org_id: number;
+            /** Group Id */
+            group_id?: number | null;
+        };
         /**
          * Direction
          * @enum {string}
@@ -906,6 +1035,8 @@ export interface components {
         GroupBrief: {
             /** Id */
             id: number;
+            /** Org Id */
+            org_id: number;
             /** Year */
             year: number;
             /** Weekday */
@@ -949,6 +1080,8 @@ export interface components {
         GroupOut: {
             /** Id */
             id: number;
+            /** Org Id */
+            org_id: number;
             /** Year */
             year: number;
             /** Weekday */
@@ -1002,6 +1135,7 @@ export interface components {
         /** InviteOut */
         InviteOut: {
             group: components["schemas"]["GroupBrief"];
+            org: components["schemas"]["OrgBrief"];
         };
         /**
          * JobKind
@@ -1040,6 +1174,18 @@ export interface components {
          * @enum {string}
          */
         JobStatus: "queued" | "running" | "done" | "failed";
+        /** JoinIn */
+        JoinIn: {
+            /** Invite Code */
+            invite_code: string;
+        };
+        /** LanguageOut */
+        LanguageOut: {
+            /** Code */
+            code: string;
+            /** Name */
+            name: string;
+        };
         /** LoginIn */
         LoginIn: {
             /** Username */
@@ -1064,14 +1210,41 @@ export interface components {
             id: number;
             /** Username */
             username: string;
-            role: components["schemas"]["Role"];
-            /** Groups */
-            groups: components["schemas"]["GroupBrief"][];
+            /** Is Superadmin */
+            is_superadmin: boolean;
             /**
              * Created At
              * Format: date-time
              */
             created_at: string;
+            /** @description The organisation the user works in now */
+            org: components["schemas"]["OrgBrief"] | null;
+            /** @description The user's role in that organisation */
+            role: components["schemas"]["Role"] | null;
+            /** @description The group the user works in now */
+            group: components["schemas"]["GroupBrief"] | null;
+            /** Organisations */
+            organisations: components["schemas"]["MyOrg"][];
+            /**
+             * Groups
+             * @description All groups, in every organisation
+             */
+            groups: components["schemas"]["GroupBrief"][];
+        };
+        /** MemberAddOut */
+        MemberAddOut: {
+            /** Username */
+            username: string;
+            /**
+             * Created
+             * @description False when an existing account was added
+             */
+            created: boolean;
+            /**
+             * Temporary Password
+             * @description Only for a new account
+             */
+            temporary_password?: string | null;
         };
         /** MemberOut */
         MemberOut: {
@@ -1102,8 +1275,85 @@ export interface components {
         MoveStudentsIn: {
             /** User Ids */
             user_ids: number[];
+            /** From Group Id */
+            from_group_id: number;
             /** To Group Id */
             to_group_id: number;
+        };
+        /** MyOrg */
+        MyOrg: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /** Slug */
+            slug: string;
+            language: components["schemas"]["LanguageOut"];
+            role: components["schemas"]["Role"];
+        };
+        /** OrgBrief */
+        OrgBrief: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /** Slug */
+            slug: string;
+            language: components["schemas"]["LanguageOut"];
+        };
+        /** OrgCreate */
+        OrgCreate: {
+            /** Name */
+            name: string;
+            /** Slug */
+            slug?: string | null;
+            /**
+             * Language Code
+             * @default vgt
+             */
+            language_code?: string;
+            /**
+             * Admin Username
+             * @description First admin: an existing user, or a new account
+             */
+            admin_username?: string | null;
+        };
+        /** OrgCreateOut */
+        OrgCreateOut: {
+            org: components["schemas"]["OrgOut"];
+            admin: components["schemas"]["MemberAddOut"] | null;
+        };
+        /** OrgOut */
+        OrgOut: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /** Slug */
+            slug: string;
+            language: components["schemas"]["LanguageOut"];
+            /** Active */
+            active: boolean;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Member Count */
+            member_count: number;
+            /** Group Count */
+            group_count: number;
+            /** Word Count */
+            word_count: number;
+        };
+        /** OrgUpdate */
+        OrgUpdate: {
+            /** Name */
+            name?: string | null;
+            /** Language Code */
+            language_code?: string | null;
+            /** Active */
+            active?: boolean | null;
         };
         /** PasswordChangeIn */
         PasswordChangeIn: {
@@ -1267,7 +1517,10 @@ export interface components {
             created_at: string;
             /** Last Active At */
             last_active_at: string | null;
-            /** Groups */
+            /**
+             * Groups
+             * @description Groups in this organisation
+             */
             groups: components["schemas"]["GroupBrief"][];
         };
         /** ValidationError */
@@ -1540,6 +1793,72 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Me"];
+                };
+            };
+        };
+    };
+    set_context: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ContextIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Me"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    join: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["JoinIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Me"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -2791,7 +3110,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["TempPasswordOut"];
+                    "application/json": components["schemas"]["MemberAddOut"];
                 };
             };
             /** @description Validation Error */
@@ -2827,6 +3146,143 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UserOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    admin_remove_user: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                user_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_languages: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LanguageOut"][];
+                };
+            };
+        };
+    };
+    admin_list_orgs: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrgOut"][];
+                };
+            };
+        };
+    };
+    admin_create_org: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OrgCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrgCreateOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    admin_update_org: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                org_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OrgUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrgOut"];
                 };
             };
             /** @description Validation Error */

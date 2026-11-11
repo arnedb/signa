@@ -52,6 +52,51 @@ def _enum(e: type[PyEnum]) -> Enum:
     return Enum(e, native_enum=False, length=16, validate_strings=True)
 
 
+class Language(Base):
+    """A sign language, e.g. ``vgt``. Each organisation teaches one."""
+
+    __tablename__ = "languages"
+
+    code: Mapped[str] = mapped_column(String(16), primary_key=True)
+    name: Mapped[str] = mapped_column(String(100))
+
+
+class Organisation(Base):
+    """A school. Its words, groups, recordings and logs are never visible to other schools."""
+
+    __tablename__ = "organisations"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(100))
+    slug: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    language_code: Mapped[str] = mapped_column(ForeignKey("languages.code"))
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(default=utcnow)
+
+    language: Mapped[Language] = relationship(lazy="joined")
+    members: Mapped[list["OrgMember"]] = relationship(
+        back_populates="org", cascade="all, delete-orphan"
+    )
+
+
+class OrgMember(Base):
+    """A user's role in one organisation. A user can belong to several organisations."""
+
+    __tablename__ = "org_members"
+
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    org_id: Mapped[int] = mapped_column(
+        ForeignKey("organisations.id", ondelete="CASCADE"), primary_key=True, index=True
+    )
+    role: Mapped[Role] = mapped_column(_enum(Role), default=Role.student)
+    created_at: Mapped[datetime] = mapped_column(default=utcnow)
+
+    user: Mapped["User"] = relationship(back_populates="org_memberships")
+    org: Mapped[Organisation] = relationship(back_populates="members")
+
+
 class User(Base):
     __tablename__ = "users"
 
@@ -59,11 +104,22 @@ class User(Base):
     username: Mapped[str] = mapped_column(String(64), unique=True, index=True)
     password_hash: Mapped[str] = mapped_column(String(255))
     recovery_hash: Mapped[str | None] = mapped_column(String(255))
-    role: Mapped[Role] = mapped_column(_enum(Role), default=Role.student)
+    # Runs the platform: manages organisations, and acts as admin in every organisation.
+    is_superadmin: Mapped[bool] = mapped_column(Boolean, default=False)
+    # The organisation and group the user chose last; see ``vgt.services.context``.
+    current_org_id: Mapped[int | None] = mapped_column(
+        ForeignKey("organisations.id", ondelete="SET NULL")
+    )
+    current_group_id: Mapped[int | None] = mapped_column(
+        ForeignKey("groups.id", ondelete="SET NULL")
+    )
     created_at: Mapped[datetime] = mapped_column(default=utcnow)
     last_active_at: Mapped[datetime | None]
 
     memberships: Mapped[list["Membership"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
+    org_memberships: Mapped[list[OrgMember]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
 
@@ -71,17 +127,24 @@ class User(Base):
     def groups(self) -> list["Group"]:
         return [m.group for m in self.memberships]
 
+    def role_in(self, org_id: int) -> Role | None:
+        return next((m.role for m in self.org_memberships if m.org_id == org_id), None)
+
 
 class Group(Base):
     __tablename__ = "groups"
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    org_id: Mapped[int] = mapped_column(
+        ForeignKey("organisations.id", ondelete="CASCADE"), index=True
+    )
     year: Mapped[int]
     weekday: Mapped[str] = mapped_column(String(16))
     label: Mapped[str] = mapped_column(String(64))
     invite_code: Mapped[str] = mapped_column(String(32), unique=True, index=True)
     active: Mapped[bool] = mapped_column(Boolean, default=True)
 
+    org: Mapped[Organisation] = relationship()
     memberships: Mapped[list["Membership"]] = relationship(
         back_populates="group", cascade="all, delete-orphan"
     )
@@ -103,9 +166,10 @@ class Membership(Base):
 
 class Word(Base):
     __tablename__ = "words"
-    __table_args__ = (Index("ix_words_year_list", "year", "list_number"),)
+    __table_args__ = (Index("ix_words_org_year_list", "org_id", "year", "list_number"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    org_id: Mapped[int] = mapped_column(ForeignKey("organisations.id", ondelete="CASCADE"))
     gloss: Mapped[str] = mapped_column(String(200), index=True)
     year: Mapped[int]
     lesson: Mapped[int | None]
@@ -168,6 +232,9 @@ class GroupEvent(Base):
     __tablename__ = "group_events"
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    org_id: Mapped[int] = mapped_column(
+        ForeignKey("organisations.id", ondelete="CASCADE"), index=True
+    )
     user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
     from_group_id: Mapped[int | None] = mapped_column(ForeignKey("groups.id", ondelete="SET NULL"))
     to_group_id: Mapped[int | None] = mapped_column(ForeignKey("groups.id", ondelete="SET NULL"))
@@ -202,6 +269,9 @@ class Job(Base):
     __tablename__ = "jobs"
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    org_id: Mapped[int | None] = mapped_column(
+        ForeignKey("organisations.id", ondelete="CASCADE"), index=True
+    )
     kind: Mapped[JobKind] = mapped_column(_enum(JobKind))
     status: Mapped[JobStatus] = mapped_column(_enum(JobStatus), default=JobStatus.queued)
     payload: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
