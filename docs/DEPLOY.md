@@ -61,8 +61,13 @@ For each environment (or once, if both are on the same server):
    ```
 
    (Copy the examples from `deploy/` in this repository for the very first time.)
-5. If the GitHub package is private: `docker login ghcr.io` as the deploy user, with a token
-   that has `read:packages`.
+5. Let the server download the image. GitHub makes a new package **private**, so the first
+   deploy fails with `error from registry: denied`. Either:
+   - make it public (the image holds only the open-source code, never class videos):
+     GitHub → your profile → **Packages** → `vgt-practice` → **Package settings** →
+     **Change visibility** → Public; or
+   - keep it private and, as the deploy user on the server, run `docker login ghcr.io -u <github user>`
+     with a classic personal access token that has only `read:packages`.
 
 ### GitHub
 
