@@ -80,11 +80,16 @@ For each environment (or once, if both are on the same server):
 | Kind | Name | Value |
 |---|---|---|
 | variable | `VGT_HOST` | `vgt-dev.arnedb.be` / `vgt.arnedb.be` |
-| secret | `DEPLOY_HOST` | server name or IP |
-| secret | `DEPLOY_USER` | deploy user |
+| variable | `DEPLOY_HOST` | server name or IP |
+| variable | `DEPLOY_USER` | deploy user, e.g. `deploy` |
 | secret | `DEPLOY_SSH_KEY` | private key of the deploy user |
 | secret | `DEPLOY_KNOWN_HOSTS` | output of `ssh-keyscan <server>` |
-| secret | `DEPLOY_PATH` | deploy folder, e.g. `/srv/vgt` |
+| variable | `DEPLOY_PATH` | deploy folder, e.g. `/opt/sites/vgt-practice` |
+
+`DEPLOY_HOST`, `DEPLOY_USER` and `DEPLOY_PATH` may also be secrets; the workflow reads either.
+GitHub hides a secret's value everywhere in the logs, so a short value like `deploy` makes the
+logs hard to read: prefer variables for these three. The SSH key and known hosts are always
+secrets, and the deploy stops early with a clear message when one of these settings is missing.
 
 Secrets live only in GitHub and in the server's `.env.*` files, never in this repository.
 
