@@ -1,4 +1,6 @@
-"""Fill a database with demo data: about 20 words, demo users and one group.
+"""Fill a database with demo data: two schools, about 20 words, demo users and groups.
+
+The demo student is in both schools, so the school and group switcher can be tried out.
 
 Clips come from a folder of MP4s named after the gloss (``huis.mp4``), as in the demo release
 asset. Without a folder, simple generated test clips are used, which is enough for development.
@@ -11,15 +13,31 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from vgt import media
-from vgt.models import Clip, ClipSource, Group, Membership, Role, User, Word, WordStatus
+from vgt.i18n import group_label
+from vgt.languages import ensure_languages
+from vgt.models import (
+    Clip,
+    ClipSource,
+    Group,
+    Membership,
+    Organisation,
+    Role,
+    User,
+    Word,
+    WordStatus,
+)
 from vgt.security import hash_secret, new_recovery_code
 from vgt.services import words as word_service
+from vgt.services.members import ensure_org_member
 
 DEMO_WORDS: dict[str, list[str]] = {
     "1.1": ["hallo", "goedemorgen", "dank je", "ja", "nee", "naam"],
     "1.2": ["doof", "horend", "gebarentaal", "leren", "begrijpen", "herhalen", "langzaam"],
     "2.1": ["maandag", "dinsdag", "vandaag", "morgen", "gisteren", "week", "huis"],
 }
+
+# The second school has its own, smaller word list.
+SECOND_WORDS: dict[str, list[str]] = {"1.1": ["hallo", "welkom", "school", "les"]}
 
 DEMO_USERS = [
     ("admin", "demo-admin", Role.admin),
@@ -46,39 +64,45 @@ def _synthetic_clip(gloss: str, index: int, out: Path) -> None:
     _ = gloss
 
 
-def seed_demo(db: Session, clips_dir: Path | None = None) -> dict[str, int]:
-    counts = {"words": 0, "clips": 0, "users": 0}
-    group = db.scalars(select(Group).where(Group.invite_code == "demo")).first()
+def _org(db: Session, slug: str, name: str) -> Organisation:
+    org = db.scalars(select(Organisation).where(Organisation.slug == slug)).first()
+    if org is None:
+        org = Organisation(name=name, slug=slug, language_code="vgt")
+        db.add(org)
+        db.flush()
+    return org
+
+
+def _group(db: Session, org: Organisation, code: str, year: int, weekday: str) -> Group:
+    group = db.scalars(select(Group).where(Group.invite_code == code)).first()
     if group is None:
-        group = Group(year=1, weekday="dinsdag", label="Jaar 1 · dinsdag", invite_code="demo")
+        label = group_label(year, weekday, org.language.locale)
+        group = Group(org_id=org.id, year=year, weekday=weekday, label=label, invite_code=code)
         db.add(group)
         db.flush()
+    return group
 
-    for username, password, role in DEMO_USERS:
-        if db.scalars(select(User).where(User.username == username)).first():
-            continue
-        user = User(
-            username=username,
-            password_hash=hash_secret(password),
-            recovery_hash=hash_secret(new_recovery_code()),
-            role=role,
-        )
-        db.add(user)
-        db.flush()
-        if role != Role.admin:
-            db.add(Membership(user_id=user.id, group_id=group.id))
-        counts["users"] += 1
 
+def _words(
+    db: Session,
+    org: Organisation,
+    words: dict[str, list[str]],
+    clips_dir: Path | None,
+    counts: dict[str, int],
+    start: int,
+) -> None:
     tmp = media.media_path("tmp")
     tmp.mkdir(parents=True, exist_ok=True)
-    index = 0
-    for list_number, glosses in DEMO_WORDS.items():
+    index = start
+    for list_number, glosses in words.items():
         lesson = int(list_number.split(".")[0])
         for pos, gloss in enumerate(glosses, start=1):
             index += 1
-            if db.scalars(select(Word).where(Word.gloss == gloss, Word.year == 1)).first():
+            existing = select(Word).where(Word.org_id == org.id, Word.gloss == gloss)
+            if db.scalars(existing).first():
                 continue
             word = Word(
+                org_id=org.id,
                 gloss=gloss,
                 year=1,
                 lesson=lesson,
@@ -103,5 +127,38 @@ def seed_demo(db: Session, clips_dir: Path | None = None) -> dict[str, int]:
             counts["clips"] += 1
             if src.parent == tmp:
                 src.unlink(missing_ok=True)
+
+
+def seed_demo(db: Session, clips_dir: Path | None = None) -> dict[str, int]:
+    counts = {"words": 0, "clips": 0, "users": 0}
+    ensure_languages(db)
+    org = _org(db, "demo", "Demoschool")
+    second = _org(db, "demo-2", "Tweede school")
+    group = _group(db, org, "demo", 1, "tue")
+    second_group = _group(db, second, "demo-2", 1, "sat")
+
+    for username, password, role in DEMO_USERS:
+        user = db.scalars(select(User).where(User.username == username)).first()
+        if user is None:
+            user = User(
+                username=username,
+                password_hash=hash_secret(password),
+                recovery_hash=hash_secret(new_recovery_code()),
+                is_superadmin=role == Role.admin,
+            )
+            db.add(user)
+            db.flush()
+            counts["users"] += 1
+        ensure_org_member(db, user, org.id, role)
+        if role != Role.admin and db.get(Membership, (user.id, group.id)) is None:
+            db.add(Membership(user_id=user.id, group_id=group.id))
+        if role == Role.student:
+            ensure_org_member(db, user, second.id, role)
+            if db.get(Membership, (user.id, second_group.id)) is None:
+                db.add(Membership(user_id=user.id, group_id=second_group.id))
+    db.flush()
+
+    _words(db, org, DEMO_WORDS, clips_dir, counts, 0)
+    _words(db, second, SECOND_WORDS, clips_dir, counts, 100)
     db.commit()
     return counts

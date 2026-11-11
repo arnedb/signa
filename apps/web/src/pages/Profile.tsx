@@ -5,6 +5,7 @@ import { Download, KeyRound, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import { Field, PageTitle, RecoveryCode } from "@/components/common";
+import { LanguageSelect } from "@/components/LanguageSelect";
 import { Button } from "@/components/ui/button";
 import { Alert, Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog } from "@/components/ui/dialog";
@@ -23,14 +24,40 @@ export function ProfilePage() {
           <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 text-sm">
             <dt className="text-muted-foreground">{t.auth.username}</dt>
             <dd className="font-medium">{me.username}</dd>
-            <dt className="text-muted-foreground">{me.groups.length > 1 ? t.profile.groups : t.profile.group}</dt>
-            <dd>{me.groups.map((g) => g.label).join(", ") || "—"}</dd>
-            <dt className="text-muted-foreground">{t.profile.role}</dt>
-            <dd>{t.profile.roles[me.role]}</dd>
+            <dt className="text-muted-foreground">{me.organisations.length > 1 ? t.profile.schools : t.context.school}</dt>
+            <dd>
+              <ul>
+                {me.organisations.map((o) => {
+                  const groups = me.groups.filter((g) => g.org_id === o.id).map((g) => g.label);
+                  return (
+                    <li key={o.id}>
+                      <span className="font-medium">{o.name}</span> · {t.profile.roles[o.role]}
+                      {groups.length > 0 && <span className="text-muted-foreground"> · {groups.join(", ")}</span>}
+                    </li>
+                  );
+                })}
+                {me.organisations.length === 0 && <li>—</li>}
+              </ul>
+            </dd>
+            {me.is_superadmin && (
+              <>
+                <dt className="text-muted-foreground">{t.profile.role}</dt>
+                <dd>{t.profile.superadmin}</dd>
+              </>
+            )}
             <dt className="text-muted-foreground">{t.profile.memberSince}</dt>
             <dd>{formatDate(me.created_at)}</dd>
           </dl>
-          {me.role === "student" && <p className="mt-3 text-xs text-muted-foreground">{t.profile.groupFixed}</p>}
+          {me.organisations.some((o) => o.role === "student") && <p className="mt-3 text-xs text-muted-foreground">{t.profile.groupFixed}</p>}
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle>{t.language.label}</CardTitle>
+          <CardDescription>{t.language.autoHint}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <LanguageSelect me={me} className="h-10" />
         </CardContent>
       </Card>
       <ChangePassword />

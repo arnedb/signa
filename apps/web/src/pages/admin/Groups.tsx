@@ -1,5 +1,5 @@
 import type { Schemas } from "@vgt/api-client";
-import { t } from "@vgt/core";
+import { t, type Weekday, WEEKDAYS, weekdayName } from "@vgt/core";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { ArrowLeft, KeyRound, Plus, RefreshCw } from "lucide-react";
@@ -88,13 +88,13 @@ export function GroupsPage() {
 function NewGroupDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
   const qc = useQueryClient();
   const [year, setYear] = useState("1");
-  const [weekday, setWeekday] = useState("dinsdag");
+  const [weekday, setWeekday] = useState<Weekday>("tue");
   const [label, setLabel] = useState("");
   const create = useMutation({
     mutationFn: () =>
       unwrap(
         api.POST("/api/v1/admin/groups", {
-          body: { year: Number(year), weekday: weekday as Schemas["GroupCreate"]["weekday"], label: label || null },
+          body: { year: Number(year), weekday, label: label || null },
         }),
       ),
     onSuccess: () => {
@@ -113,8 +113,8 @@ function NewGroupDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (
           </Field>
           <Field label={t.admin.weekday}>
             {(p) => (
-              <Select {...p} value={weekday} onChange={(e) => setWeekday(e.target.value)}>
-                {t.admin.weekdays.map((d) => <option key={d} value={d}>{d}</option>)}
+              <Select {...p} value={weekday} onChange={(e) => setWeekday(e.target.value as Weekday)}>
+                {WEEKDAYS.map((d) => <option key={d} value={d}>{weekdayName(d)}</option>)}
               </Select>
             )}
           </Field>
@@ -160,7 +160,11 @@ export function GroupPage({ groupId }: { groupId: number }) {
       const to_group_id = Number(target);
       return all
         ? unwrap(api.POST("/api/v1/admin/groups/{group_id}/move-all", { ...params, body: { to_group_id } }))
-        : unwrap(api.POST("/api/v1/admin/groups/move-students", { body: { user_ids: [...selected], to_group_id } }));
+        : unwrap(
+            api.POST("/api/v1/admin/groups/move-students", {
+              body: { user_ids: [...selected], from_group_id: groupId, to_group_id },
+            }),
+          );
     },
     onSuccess: (r) => {
       setSelected(new Set());
@@ -238,7 +242,7 @@ export function GroupPage({ groupId }: { groupId: number }) {
             <table className="w-full text-sm">
               <thead className="border-b text-left text-xs text-muted-foreground">
                 <tr>
-                  <th className="w-8 py-2"><span className="sr-only">Selecteer</span></th>
+                  <th className="w-8 py-2"><span className="sr-only">{t.admin.select}</span></th>
                   <th className="py-2 font-medium">{t.auth.username}</th>
                   <th className="py-2 font-medium">{t.profile.role}</th>
                   <th className="hidden py-2 font-medium sm:table-cell">{t.admin.lastActive}</th>
@@ -307,7 +311,7 @@ export function GroupPage({ groupId }: { groupId: number }) {
 
 function GroupForm({ group, onSave }: { group: Group; onSave: (body: Schemas["GroupUpdate"]) => void }) {
   const [year, setYear] = useState(String(group.year));
-  const [weekday, setWeekday] = useState(group.weekday);
+  const [weekday, setWeekday] = useState<Weekday>(group.weekday);
   const [label, setLabel] = useState(group.label);
   return (
     <Card>
@@ -316,7 +320,7 @@ function GroupForm({ group, onSave }: { group: Group; onSave: (body: Schemas["Gr
           className="flex flex-wrap items-end gap-3"
           onSubmit={(e) => {
             e.preventDefault();
-            onSave({ year: Number(year), weekday: weekday as Schemas["GroupCreate"]["weekday"], label });
+            onSave({ year: Number(year), weekday, label });
           }}
         >
           <Field label={t.practice.year}>
@@ -324,8 +328,8 @@ function GroupForm({ group, onSave }: { group: Group; onSave: (body: Schemas["Gr
           </Field>
           <Field label={t.admin.weekday}>
             {(p) => (
-              <Select {...p} value={weekday} onChange={(e) => setWeekday(e.target.value)}>
-                {t.admin.weekdays.map((d) => <option key={d} value={d}>{d}</option>)}
+              <Select {...p} value={weekday} onChange={(e) => setWeekday(e.target.value as Weekday)}>
+                {WEEKDAYS.map((d) => <option key={d} value={d}>{weekdayName(d)}</option>)}
               </Select>
             )}
           </Field>

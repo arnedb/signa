@@ -14,6 +14,8 @@ import {
   toResults,
 } from "@vgt/core";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+
+import { useGlossLang } from "@/lib/i18n";
 import { Link } from "@tanstack/react-router";
 import { Check, Eye, RotateCcw, Undo2, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
@@ -210,6 +212,7 @@ function PracticeCard({
   onAnswer: (correct: boolean) => void;
   onUndo: () => void;
 }) {
+  const glossLang = useGlossLang();
   const showVideo = card.direction === "s2w" || revealed;
   const showWord = card.direction === "w2s" || revealed;
   const knownRef = useRef<HTMLButtonElement>(null);
@@ -227,7 +230,7 @@ function PracticeCard({
       </p>
       <div className="flex min-h-16 items-center justify-center">
         {showWord ? (
-          <p className="text-center text-3xl font-semibold tracking-tight sm:text-4xl" lang="nl">
+          <p className="text-center text-3xl font-semibold tracking-tight sm:text-4xl" lang={glossLang}>
             {card.word.gloss}
           </p>
         ) : (

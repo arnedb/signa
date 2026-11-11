@@ -56,7 +56,7 @@ export async function unwrap<T>(
       typeof detail === "string"
         ? detail
         : Array.isArray(detail)
-          ? "Ongeldige invoer"
+          ? "Invalid input"
           : response.statusText;
     throw new ApiError(response.status, message);
   }

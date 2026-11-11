@@ -1,14 +1,15 @@
 from fastapi import APIRouter, HTTPException, Request, Response, status
-from sqlalchemy import func, select
+from sqlalchemy import select
 
 from vgt.config import get_settings
 from vgt.deps import DB
-from vgt.models import AuthSession, Group, Membership, Role, User
+from vgt.models import AuthSession, Group, Role, User
 from vgt.schemas import (
     GroupBrief,
     InviteOut,
     LoginIn,
     LoginOut,
+    OrgBrief,
     RecoverIn,
     RecoveryCodeOut,
     RegisterIn,
@@ -23,6 +24,7 @@ from vgt.security import (
     verify_secret,
 )
 from vgt.services.auth import clear_cookie, end_all_sessions, start_session
+from vgt.services.members import find_user, join_group
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -30,22 +32,17 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 _DUMMY_HASH = hash_secret("not-a-real-password")
 
 
-def _find_user(db: DB, username: str) -> User | None:
-    return db.scalars(
-        select(User).where(func.lower(User.username) == username.strip().lower())
-    ).first()
-
-
-def _active_group(db: DB, code: str) -> Group:
+def active_group(db: DB, code: str) -> Group:
+    """The group an invite code belongs to, if both the group and its school are active."""
     group = db.scalars(select(Group).where(Group.invite_code == code.strip())).first()
-    if group is None or not group.active:
+    if group is None or not group.active or not group.org.active:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Invite link is not valid")
     return group
 
 
 @router.post("/login", response_model=LoginOut)
 def login(body: LoginIn, response: Response, db: DB) -> LoginOut:
-    user = _find_user(db, body.username)
+    user = find_user(db, body.username)
     if not verify_secret(user.password_hash if user else _DUMMY_HASH, body.password) or not user:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Wrong username or password")
     if needs_rehash(user.password_hash):
@@ -69,24 +66,24 @@ def logout(request: Request, response: Response, db: DB) -> None:
 
 @router.get("/invites/{code}", response_model=InviteOut)
 def invite(code: str, db: DB) -> InviteOut:
-    return InviteOut(group=GroupBrief.model_validate(_active_group(db, code)))
+    group = active_group(db, code)
+    return InviteOut(group=GroupBrief.model_validate(group), org=OrgBrief.model_validate(group.org))
 
 
 @router.post("/register", response_model=RegisterOut, status_code=201)
 def register(body: RegisterIn, response: Response, db: DB) -> RegisterOut:
-    group = _active_group(db, body.invite_code)
-    if _find_user(db, body.username):
+    group = active_group(db, body.invite_code)
+    if find_user(db, body.username):
         raise HTTPException(status.HTTP_409_CONFLICT, "Username is taken")
     code = new_recovery_code()
     user = User(
         username=body.username,
         password_hash=hash_secret(body.password),
         recovery_hash=hash_secret(code),
-        role=Role.student,
     )
     db.add(user)
     db.flush()
-    db.add(Membership(user_id=user.id, group_id=group.id))
+    join_group(db, user, group, Role.student)
     db.commit()
     db.refresh(user)
     out = start_session(db, user, body.client, response)
@@ -96,7 +93,7 @@ def register(body: RegisterIn, response: Response, db: DB) -> RegisterOut:
 @router.post("/recover", response_model=RecoveryCodeOut)
 def recover(body: RecoverIn, db: DB) -> RecoveryCodeOut:
     """Set a new password with the one-time recovery code. Returns a fresh recovery code."""
-    user = _find_user(db, body.username)
+    user = find_user(db, body.username)
     code = normalize_recovery_code(body.recovery_code)
     if not verify_secret(user.recovery_hash if user else _DUMMY_HASH, code) or not user:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Username or recovery code is wrong")

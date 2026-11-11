@@ -11,6 +11,9 @@ It replaces the earlier `vgt` app, and is rebuilt from scratch.
   teacher's new recordings.
 - Accounts linked to groups. A group is a course year plus a weekday, for example
   "Jaar 1 · dinsdag". There are no cohorts.
+- Several schools in one deployment. Each school (organisation) has its own words, groups,
+  recordings and members, and teaches one sign language. Nothing is ever shared between
+  schools. A school can later move to its own deployment for a hard boundary.
 - Several teachers can manage the word list, and every change is recorded.
 - Web first. Android and iOS apps come later, but the design supports them from day 1.
 - The code is open source. The class videos are never in the repository.
@@ -18,7 +21,8 @@ It replaces the earlier `vgt` app, and is rebuilt from scratch.
 
 ## Status (2026-11-11)
 
-Milestones 1 to 6 are built and merged. The labelling tool of the old app is ported too
+Milestones 1 to 6 are built and merged, and so are schools (organisations), languages and
+the school and group switcher. The labelling tool of the old app is ported too
 (see [From the old labelling tool](#from-the-old-labelling-tool)). What is left is launching the real app (milestone 7),
 the portfolio work (milestone 8) and the mobile app (milestone 9). See [Milestones](#milestones).
 
@@ -57,24 +61,54 @@ packages/core         shared TypeScript logic: deck building, practice session s
 ## Data model
 
 ```
-users        id, username, password_hash, recovery_hash,
-             role (student | teacher | admin), created_at, last_active_at
-groups       id, year, weekday, label, invite_code, active
-memberships  user_id, group_id          -- student: exactly 1, teacher: many
-words        id, gloss, year, lesson, list_number, position, notes,
+languages    code (vgt | lsfb | ngt | …), name
+organisations id, name, slug, language_code, active, created_at   -- a school
+users        id, username, password_hash, recovery_hash, is_superadmin,
+             current_org_id, current_group_id, created_at, last_active_at
+org_members  user_id, org_id, role (student | teacher | admin)    -- role per school
+groups       id, org_id, year, weekday, label, invite_code, active
+memberships  user_id, group_id          -- any number, in any of the user's schools
+words        id, org_id, gloss, year, lesson, list_number, position, notes,
              status (draft | published), legacy_id, created_by, updated_by, timestamps
 clips        id, word_id, file, duration, thumb, source (legacy | recording | demo),
              recorded_at, is_primary, archived, created_at, updated_at
 word_events  id, word_id, user_id, action, diff_json, undone, at   -- audit log for words
-group_events id, user_id, from_group_id, to_group_id, by_user_id, at
+group_events id, org_id, user_id, from_group_id, to_group_id, by_user_id, at
 results      id, user_id, word_id, direction (w2s | s2w), correct, at
 sessions     token_hash, user_id, client (web | mobile), expires_at
-jobs         id, kind (transcode | split), status (queued | running | done | failed),
+jobs         id, org_id, kind (transcode | split), status (queued | running | done | failed),
              payload, result, error, created_by, timestamps
 ```
 
+- **Schools are separate.** Every request runs in the user's current school
+  (`current_org_id`), checked again on each request. Words, groups, recordings, jobs and
+  group moves of another school are not found (404), and answers for another school's words
+  are ignored. Clips are served to members of the clip's school only.
+- **One account, several schools and groups.** A role is per school (`org_members`): someone
+  can be a teacher in one school and a student in another. The current school and group are
+  stored on the user, so web and mobile agree; `PUT /me/context` changes them, and a
+  switcher in the header shows when there is a choice. When the user loses access, a valid
+  default is chosen. Logged-in users join another group, of any school, with its invite link
+  (`POST /me/join`).
+- **Superadmins** (`vgt create-admin`) create and deactivate schools and act as admin in each.
+  School admins manage their own members: add an existing account or a new one, change
+  roles, remove someone from the school (the account stays). A school always keeps an admin.
+  A teacher can reset a student's password, an admin anyone's in the school, except for
+  someone who is staff in another school.
+- **Languages:** each school teaches one sign language. A school teaching two languages is
+  two schools. Each sign language has a spoken language (`languages.locale`: VGT and NGT
+  Dutch, LSFB French): the language of its glosses and the default interface language.
+- **Interface languages:** Dutch, French and English. The order: the language chosen on the
+  account (`users.locale`, `PUT /me/locale`, so web and mobile agree), then the one chosen on
+  this device (login page), then the school's spoken language, then the browser's, then
+  Dutch. All text lives in `packages/core/src/text*.ts`; the type checker makes every
+  language fill in every text. API error messages are English and translated in the app.
+  Weekdays are stored as codes (`mon` … `sun`); a new group's default name is made in the
+  school's spoken language (“Année 1 · mardi”). Names people typed are never translated.
 - `words.position` is the order of a word within its list. `words.legacy_id` keeps the
   `guid` from the old app.
+- A student can be in several groups. Moving a student moves them out of one group into
+  another; their other groups stay.
 - A teacher's memberships are the groups they teach. A teacher who creates a group teaches it,
   and can mark or unmark other groups as taught.
 
@@ -97,7 +131,8 @@ jobs         id, kind (transcode | split), status (queued | running | done | fai
 - Browse and search the dictionary, with all clips of a word.
 - "Mijn moeilijke woorden": practise only the words you got wrong.
 - Profile: change your password, download your data, delete your account.
-- Students cannot change their group.
+- Students cannot leave or change their group; only a teacher moves them. With another
+  invite link they join one more group, also of another school, with the same account.
 
 ### Teachers (`/admin`)
 
@@ -131,8 +166,11 @@ jobs         id, kind (transcode | split), status (queued | running | done | fai
 
 ### Admins
 
-- Manage roles, and create teacher or admin accounts with a temporary password.
-- The first admin is created from the command line (`vgt create-admin`).
+- School admins manage the school's members and their roles: add an existing account, or
+  create one with a temporary password.
+- Superadmins manage the schools (create, rename, deactivate) and are admin in each. The
+  first superadmin is created from the command line (`vgt create-admin`), the first school
+  with `vgt create-org` or in the web app.
 
 ## Data and media
 
@@ -190,8 +228,9 @@ Milestones 1 to 4 give a usable product. Milestone 6 was the largest.
 
 ## Ground rules
 
-- UI text is in Dutch, code and docs are in English. All UI text lives in one place so a
-  translation can be added later.
+- UI text is in Dutch, French and English; code and docs are in English. All UI text lives
+  in `packages/core/src/text*.ts`. Dutch (`text.ts`) is the reference: add a text there first,
+  then in every other language (the type checker lists what is missing).
 - Keyboard-only practice works (space or Enter to reveal, ←/→ to answer, Backspace or z to undo).
 - Secrets live only in GitHub secrets and the server `.env`, never in the repository.
 - Deploys only happen when CI passes. PRO only gets an image that already ran in DEV.

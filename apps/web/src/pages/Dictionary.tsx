@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Badge, Card } from "@/components/ui/card";
 import { Input, Select } from "@/components/ui/input";
 import { catalogQuery, difficultQuery, wordQuery, wordsQuery } from "@/lib/api";
+import { useGlossLang } from "@/lib/i18n";
 
 export interface DictionarySearch {
   q?: string;
@@ -122,6 +123,7 @@ export function DictionaryPage({ search }: { search: DictionarySearch }) {
 export function WordPage({ wordId }: { wordId: number }) {
   const word = useQuery(wordQuery(wordId));
   const [active, setActive] = useState(0);
+  const glossLang = useGlossLang();
   if (word.isPending) return <Spinner />;
   if (word.isError) return <ErrorView error={word.error} />;
   const w = word.data;
@@ -133,7 +135,7 @@ export function WordPage({ wordId }: { wordId: number }) {
           <ArrowLeft aria-hidden /> {t.dictionary.back}
         </Link>
       </Button>
-      <h1 className="text-3xl font-semibold tracking-tight" lang="nl">
+      <h1 className="text-3xl font-semibold tracking-tight" lang={glossLang}>
         {w.gloss}
       </h1>
       <div className="mt-2 mb-5 flex flex-wrap gap-2">

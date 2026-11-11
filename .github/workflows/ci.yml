@@ -12,13 +12,29 @@ concurrency:
 jobs:
   api:
     runs-on: ubuntu-latest
+    # Fail instead of hanging for hours when a download stalls.
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: apps/api
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
-      - run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - name: Install ffmpeg
+        timeout-minutes: 8
+        run: |
+          # The runners download packages from Azure's Ubuntu mirror first, which can stall
+          # for every package. Use Ubuntu's own archive instead, with short timeouts.
+          for f in /etc/apt/apt-mirrors.txt /etc/apt/sources.list.d/ubuntu.sources /etc/apt/sources.list; do
+            if [ -f "$f" ]; then
+              sudo sed -i 's#http://azure\.archive\.ubuntu\.com#http://archive.ubuntu.com#g' "$f"
+            fi
+          done
+          # Skip rebuilding the man page index after the install; it is slow on these runners.
+          sudo rm -f /var/lib/man-db/auto-update
+          APT="-o Acquire::Retries=3 -o Acquire::http::Timeout=15"
+          sudo apt-get update $APT
+          sudo apt-get install -y --no-install-recommends $APT ffmpeg
       - run: uv sync --frozen
       - run: uv run ruff check .
       - run: uv run ruff format --check .
@@ -49,6 +65,8 @@ jobs:
   e2e:
     needs: [api, web]
     runs-on: ubuntu-latest
+    # Fail instead of hanging for hours when a download stalls.
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -57,7 +75,21 @@ jobs:
           node-version: 22
           cache: pnpm
       - uses: astral-sh/setup-uv@v6
-      - run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - name: Install ffmpeg
+        timeout-minutes: 8
+        run: |
+          # The runners download packages from Azure's Ubuntu mirror first, which can stall
+          # for every package. Use Ubuntu's own archive instead, with short timeouts.
+          for f in /etc/apt/apt-mirrors.txt /etc/apt/sources.list.d/ubuntu.sources /etc/apt/sources.list; do
+            if [ -f "$f" ]; then
+              sudo sed -i 's#http://azure\.archive\.ubuntu\.com#http://archive.ubuntu.com#g' "$f"
+            fi
+          done
+          # Skip rebuilding the man page index after the install; it is slow on these runners.
+          sudo rm -f /var/lib/man-db/auto-update
+          APT="-o Acquire::Retries=3 -o Acquire::http::Timeout=15"
+          sudo apt-get update $APT
+          sudo apt-get install -y --no-install-recommends $APT ffmpeg
       - run: pnpm install --frozen-lockfile
       - run: cd apps/api && uv sync --frozen
       - run: pnpm --filter @vgt/web exec playwright install --with-deps chromium

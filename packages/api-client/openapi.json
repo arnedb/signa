@@ -206,6 +206,132 @@
         }
       }
     },
+    "/api/v1/me/locale": {
+      "put": {
+        "tags": [
+          "me"
+        ],
+        "summary": "Set Locale",
+        "description": "Choose the interface language. ``null`` follows the language of the current school.",
+        "operationId": "set_locale",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LocaleIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Me"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/context": {
+      "put": {
+        "tags": [
+          "me"
+        ],
+        "summary": "Set Context",
+        "description": "Choose the school (and group) to work in. Words, practice and /admin follow it.",
+        "operationId": "set_context",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContextIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Me"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/join": {
+      "post": {
+        "tags": [
+          "me"
+        ],
+        "summary": "Join",
+        "description": "Join another group with an invite link, keeping the same account.",
+        "operationId": "join",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JoinIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Me"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/me/password": {
       "post": {
         "tags": [
@@ -345,6 +471,7 @@
           "me"
         ],
         "summary": "Save Results",
+        "description": "Save answers. Words outside the user's schools are ignored.",
         "operationId": "save_results",
         "requestBody": {
           "content": {
@@ -386,7 +513,7 @@
           "me"
         ],
         "summary": "Difficult Words",
-        "description": "Published words whose most recent answer was wrong.",
+        "description": "Published words of the current school whose most recent answer was wrong.",
         "operationId": "difficult_words",
         "responses": {
           "200": {
@@ -412,7 +539,7 @@
           "words"
         ],
         "summary": "List Words",
-        "description": "Published words, in course order. ``with_clip`` keeps only words that have a clip.",
+        "description": "Published words of the current school, in course order.\n\n``with_clip`` keeps only words that have a clip.",
         "operationId": "list_words",
         "parameters": [
           {
@@ -585,7 +712,7 @@
           "words"
         ],
         "summary": "Catalog",
-        "description": "Years, lessons and lists that have published words, with counts.",
+        "description": "Years, lessons and lists of the current school that have published words, with counts.",
         "operationId": "catalog",
         "responses": {
           "200": {
@@ -2030,7 +2157,7 @@
           "admin: groups"
         ],
         "summary": "Reset Password",
-        "description": "Give a user a temporary password. Teachers can reset students; admins anyone.",
+        "description": "Give a member of the school a temporary password.\n\nTeachers can reset students; admins anyone in the school except a superadmin.",
         "operationId": "admin_reset_password",
         "parameters": [
           {
@@ -2140,7 +2267,7 @@
           "admin: users"
         ],
         "summary": "Create User",
-        "description": "Create a teacher (or admin) account with a temporary password.",
+        "description": "Add someone to the school: an existing account, or a new one with a temporary password.",
         "operationId": "admin_create_user",
         "requestBody": {
           "required": true,
@@ -2158,7 +2285,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/TempPasswordOut"
+                  "$ref": "#/components/schemas/MemberAddOut"
                 }
               }
             }
@@ -2211,6 +2338,185 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/UserOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/users/{user_id}": {
+      "delete": {
+        "tags": [
+          "admin: users"
+        ],
+        "summary": "Remove User",
+        "description": "Remove someone from the school and its groups. The account itself stays.",
+        "operationId": "admin_remove_user",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "User Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/languages": {
+      "get": {
+        "tags": [
+          "admin: organisations",
+          "meta"
+        ],
+        "summary": "List Languages",
+        "operationId": "list_languages",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/LanguageOut"
+                  },
+                  "type": "array",
+                  "title": "Response List Languages"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/organisations": {
+      "get": {
+        "tags": [
+          "admin: organisations"
+        ],
+        "summary": "List Orgs",
+        "operationId": "admin_list_orgs",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/OrgOut"
+                  },
+                  "type": "array",
+                  "title": "Response Admin List Orgs"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "admin: organisations"
+        ],
+        "summary": "Create Org",
+        "description": "Create a school, optionally with its first admin (an existing or a new account).",
+        "operationId": "admin_create_org",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OrgCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrgCreateOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/organisations/{org_id}": {
+      "patch": {
+        "tags": [
+          "admin: organisations"
+        ],
+        "summary": "Update Org",
+        "operationId": "admin_update_org",
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Org Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OrgUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrgOut"
                 }
               }
             }
@@ -2554,6 +2860,30 @@
         ],
         "title": "ClipSource"
       },
+      "ContextIn": {
+        "properties": {
+          "org_id": {
+            "type": "integer",
+            "title": "Org Id"
+          },
+          "group_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Group Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "org_id"
+        ],
+        "title": "ContextIn"
+      },
       "Direction": {
         "type": "string",
         "enum": [
@@ -2586,12 +2916,25 @@
             "type": "integer",
             "title": "Id"
           },
+          "org_id": {
+            "type": "integer",
+            "title": "Org Id"
+          },
           "year": {
             "type": "integer",
             "title": "Year"
           },
           "weekday": {
             "type": "string",
+            "enum": [
+              "mon",
+              "tue",
+              "wed",
+              "thu",
+              "fri",
+              "sat",
+              "sun"
+            ],
             "title": "Weekday"
           },
           "label": {
@@ -2606,6 +2949,7 @@
         "type": "object",
         "required": [
           "id",
+          "org_id",
           "year",
           "weekday",
           "label",
@@ -2624,13 +2968,13 @@
           "weekday": {
             "type": "string",
             "enum": [
-              "maandag",
-              "dinsdag",
-              "woensdag",
-              "donderdag",
-              "vrijdag",
-              "zaterdag",
-              "zondag"
+              "mon",
+              "tue",
+              "wed",
+              "thu",
+              "fri",
+              "sat",
+              "sun"
             ],
             "title": "Weekday"
           },
@@ -2726,12 +3070,25 @@
             "type": "integer",
             "title": "Id"
           },
+          "org_id": {
+            "type": "integer",
+            "title": "Org Id"
+          },
           "year": {
             "type": "integer",
             "title": "Year"
           },
           "weekday": {
             "type": "string",
+            "enum": [
+              "mon",
+              "tue",
+              "wed",
+              "thu",
+              "fri",
+              "sat",
+              "sun"
+            ],
             "title": "Weekday"
           },
           "label": {
@@ -2762,6 +3119,7 @@
         "type": "object",
         "required": [
           "id",
+          "org_id",
           "year",
           "weekday",
           "label",
@@ -2793,13 +3151,13 @@
               {
                 "type": "string",
                 "enum": [
-                  "maandag",
-                  "dinsdag",
-                  "woensdag",
-                  "donderdag",
-                  "vrijdag",
-                  "zaterdag",
-                  "zondag"
+                  "mon",
+                  "tue",
+                  "wed",
+                  "thu",
+                  "fri",
+                  "sat",
+                  "sun"
                 ]
               },
               {
@@ -2885,11 +3243,15 @@
         "properties": {
           "group": {
             "$ref": "#/components/schemas/GroupBrief"
+          },
+          "org": {
+            "$ref": "#/components/schemas/OrgBrief"
           }
         },
         "type": "object",
         "required": [
-          "group"
+          "group",
+          "org"
         ],
         "title": "InviteOut"
       },
@@ -2975,6 +3337,73 @@
         ],
         "title": "JobStatus"
       },
+      "JoinIn": {
+        "properties": {
+          "invite_code": {
+            "type": "string",
+            "title": "Invite Code"
+          }
+        },
+        "type": "object",
+        "required": [
+          "invite_code"
+        ],
+        "title": "JoinIn"
+      },
+      "LanguageOut": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "locale": {
+            "type": "string",
+            "enum": [
+              "nl",
+              "fr",
+              "en"
+            ],
+            "title": "Locale",
+            "description": "Spoken language of the glosses"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "name",
+          "locale"
+        ],
+        "title": "LanguageOut"
+      },
+      "LocaleIn": {
+        "properties": {
+          "locale": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "nl",
+                  "fr",
+                  "en"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Locale"
+          }
+        },
+        "type": "object",
+        "required": [
+          "locale"
+        ],
+        "title": "LocaleIn"
+      },
       "LoginIn": {
         "properties": {
           "username": {
@@ -3031,31 +3460,126 @@
             "type": "string",
             "title": "Username"
           },
+          "is_superadmin": {
+            "type": "boolean",
+            "title": "Is Superadmin"
+          },
+          "locale": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "nl",
+                  "fr",
+                  "en"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Locale",
+            "description": "Chosen interface language; null follows the school"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "org": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OrgBrief"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The organisation the user works in now"
+          },
           "role": {
-            "$ref": "#/components/schemas/Role"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Role"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The user's role in that organisation"
+          },
+          "group": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GroupBrief"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The group the user works in now"
+          },
+          "organisations": {
+            "items": {
+              "$ref": "#/components/schemas/MyOrg"
+            },
+            "type": "array",
+            "title": "Organisations"
           },
           "groups": {
             "items": {
               "$ref": "#/components/schemas/GroupBrief"
             },
             "type": "array",
-            "title": "Groups"
-          },
-          "created_at": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Created At"
+            "title": "Groups",
+            "description": "All groups, in every organisation"
           }
         },
         "type": "object",
         "required": [
           "id",
           "username",
+          "is_superadmin",
+          "locale",
+          "created_at",
+          "org",
           "role",
-          "groups",
-          "created_at"
+          "group",
+          "organisations",
+          "groups"
         ],
         "title": "Me"
+      },
+      "MemberAddOut": {
+        "properties": {
+          "username": {
+            "type": "string",
+            "title": "Username"
+          },
+          "created": {
+            "type": "boolean",
+            "title": "Created",
+            "description": "False when an existing account was added"
+          },
+          "temporary_password": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Temporary Password",
+            "description": "Only for a new account"
+          }
+        },
+        "type": "object",
+        "required": [
+          "username",
+          "created"
+        ],
+        "title": "MemberAddOut"
       },
       "MemberOut": {
         "properties": {
@@ -3134,6 +3658,10 @@
             "minItems": 1,
             "title": "User Ids"
           },
+          "from_group_id": {
+            "type": "integer",
+            "title": "From Group Id"
+          },
           "to_group_id": {
             "type": "integer",
             "title": "To Group Id"
@@ -3142,9 +3670,234 @@
         "type": "object",
         "required": [
           "user_ids",
+          "from_group_id",
           "to_group_id"
         ],
         "title": "MoveStudentsIn"
+      },
+      "MyOrg": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "slug": {
+            "type": "string",
+            "title": "Slug"
+          },
+          "language": {
+            "$ref": "#/components/schemas/LanguageOut"
+          },
+          "role": {
+            "$ref": "#/components/schemas/Role"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "slug",
+          "language",
+          "role"
+        ],
+        "title": "MyOrg"
+      },
+      "OrgBrief": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "slug": {
+            "type": "string",
+            "title": "Slug"
+          },
+          "language": {
+            "$ref": "#/components/schemas/LanguageOut"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "slug",
+          "language"
+        ],
+        "title": "OrgBrief"
+      },
+      "OrgCreate": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 2,
+            "title": "Name"
+          },
+          "slug": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64,
+                "minLength": 2,
+                "pattern": "^[a-z0-9-]+$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slug"
+          },
+          "language_code": {
+            "type": "string",
+            "title": "Language Code",
+            "default": "vgt"
+          },
+          "admin_username": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 32,
+                "minLength": 3,
+                "pattern": "^[A-Za-z0-9._-]+$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Admin Username",
+            "description": "First admin: an existing user, or a new account"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "OrgCreate"
+      },
+      "OrgCreateOut": {
+        "properties": {
+          "org": {
+            "$ref": "#/components/schemas/OrgOut"
+          },
+          "admin": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MemberAddOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "org",
+          "admin"
+        ],
+        "title": "OrgCreateOut"
+      },
+      "OrgOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "slug": {
+            "type": "string",
+            "title": "Slug"
+          },
+          "language": {
+            "$ref": "#/components/schemas/LanguageOut"
+          },
+          "active": {
+            "type": "boolean",
+            "title": "Active"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "member_count": {
+            "type": "integer",
+            "title": "Member Count"
+          },
+          "group_count": {
+            "type": "integer",
+            "title": "Group Count"
+          },
+          "word_count": {
+            "type": "integer",
+            "title": "Word Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "slug",
+          "language",
+          "active",
+          "created_at",
+          "member_count",
+          "group_count",
+          "word_count"
+        ],
+        "title": "OrgOut"
+      },
+      "OrgUpdate": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100,
+                "minLength": 2
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "language_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Language Code"
+          },
+          "active": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Active"
+          }
+        },
+        "type": "object",
+        "title": "OrgUpdate"
       },
       "PasswordChangeIn": {
         "properties": {
@@ -3705,7 +4458,8 @@
               "$ref": "#/components/schemas/GroupBrief"
             },
             "type": "array",
-            "title": "Groups"
+            "title": "Groups",
+            "description": "Groups in this organisation"
           }
         },
         "type": "object",

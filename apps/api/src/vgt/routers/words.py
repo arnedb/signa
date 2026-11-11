@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException, Query, status
 from sqlalchemy import Select, func, or_, select
 from sqlalchemy.orm import selectinload
 
-from vgt.deps import DB, CurrentUser
+from vgt.deps import DB, Member
 from vgt.models import Word, WordStatus
 from vgt.schemas import Catalog, CatalogList, CatalogYear, WordOut
 from vgt.services.words import word_out
@@ -13,13 +13,14 @@ router = APIRouter(tags=["words"])
 
 
 def word_query(
+    org_id: int,
     year: int | None = None,
     lesson: int | None = None,
     list_number: str | None = None,
     q: str | None = None,
     ids: list[int] | None = None,
 ) -> Select[Word]:
-    stmt = select(Word).options(selectinload(Word.clips))
+    stmt = select(Word).where(Word.org_id == org_id).options(selectinload(Word.clips))
     if year is not None:
         stmt = stmt.where(Word.year == year)
     if lesson is not None:
@@ -38,7 +39,7 @@ def word_query(
 
 @router.get("/words", response_model=list[WordOut])
 def list_words(
-    _user: CurrentUser,
+    ctx: Member,
     db: DB,
     year: int | None = None,
     lesson: int | None = None,
@@ -47,26 +48,31 @@ def list_words(
     ids: Annotated[list[int] | None, Query()] = None,
     with_clip: bool = False,
 ) -> list[WordOut]:
-    """Published words, in course order. ``with_clip`` keeps only words that have a clip."""
-    stmt = word_query(year, lesson, list_number, q, ids).where(Word.status == WordStatus.published)
+    """Published words of the current school, in course order.
+
+    ``with_clip`` keeps only words that have a clip.
+    """
+    stmt = word_query(ctx.org.id, year, lesson, list_number, q, ids).where(
+        Word.status == WordStatus.published
+    )
     words = [word_out(w) for w in db.scalars(stmt)]
     return [w for w in words if w.clips] if with_clip else words
 
 
 @router.get("/words/{word_id}", response_model=WordOut)
-def get_word(word_id: int, _user: CurrentUser, db: DB) -> WordOut:
+def get_word(word_id: int, ctx: Member, db: DB) -> WordOut:
     word = db.get(Word, word_id)
-    if word is None or word.status != WordStatus.published:
+    if word is None or word.org_id != ctx.org.id or word.status != WordStatus.published:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Word not found")
     return word_out(word)
 
 
 @router.get("/catalog", response_model=Catalog)
-def catalog(_user: CurrentUser, db: DB) -> Catalog:
-    """Years, lessons and lists that have published words, with counts."""
+def catalog(ctx: Member, db: DB) -> Catalog:
+    """Years, lessons and lists of the current school that have published words, with counts."""
     rows = db.execute(
         select(Word.year, Word.lesson, Word.list_number, func.count())
-        .where(Word.status == WordStatus.published)
+        .where(Word.status == WordStatus.published, Word.org_id == ctx.org.id)
         .group_by(Word.year, Word.lesson, Word.list_number)
         .order_by(Word.year, Word.lesson, Word.list_number)
     ).all()

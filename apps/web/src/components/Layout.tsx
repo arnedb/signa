@@ -7,6 +7,7 @@ import {
   Dumbbell,
   Film,
   Flame,
+  School,
   ListChecks,
   LogOut,
   type LucideIcon,
@@ -16,6 +17,8 @@ import {
   UserCog,
 } from "lucide-react";
 
+import { ContextSwitcher } from "@/components/ContextSwitcher";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { api, isStaff, meQuery } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
@@ -51,17 +54,17 @@ function SkipLink() {
   );
 }
 
-function Brand({ to = "/" }: { to?: string }) {
+function Brand({ to = "/", compact = false }: { to?: string; compact?: boolean }) {
   return (
-    <Link to={to} className="flex items-center gap-2 font-semibold">
+    <Link to={to} className="flex shrink-0 items-center gap-2 font-semibold whitespace-nowrap">
       <img src="/favicon.svg" alt="" className="size-7" />
-      <span>{t.app.name}</span>
+      <span className={compact ? "hidden sm:inline" : undefined}>{t.app.name}</span>
     </Link>
   );
 }
 
 const linkClass =
-  "flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground";
+  "flex items-center gap-2 whitespace-nowrap rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground";
 const activeClass = "bg-accent text-accent-foreground";
 
 export function AppLayout() {
@@ -94,8 +97,9 @@ export function AppLayout() {
               </Link>
             ))}
           </nav>
-          <div className="flex items-center gap-1">
-            {isStaff(me) && (
+          <div className="flex min-w-0 items-center gap-1">
+            {me && <ContextSwitcher me={me} />}
+            {(isStaff(me) || me?.is_superadmin) && (
               <Link to="/admin" className={linkClass}>
                 <Settings className="size-4" aria-hidden />
                 <span className="hidden sm:inline">{t.nav.admin}</span>
@@ -109,7 +113,7 @@ export function AppLayout() {
         </div>
       </header>
       <main id="main" className="mx-auto w-full max-w-5xl flex-1 px-4 pt-6 pb-24 md:pb-10">
-        <Outlet />
+        {me?.org ? <Outlet /> : <NoSchool />}
       </main>
       <nav
         aria-label={t.nav.menu}
@@ -132,15 +136,36 @@ export function AppLayout() {
   );
 }
 
+function NoSchool() {
+  return (
+    <Card className="mx-auto max-w-md">
+      <CardHeader>
+        <CardTitle>{t.context.noSchoolTitle}</CardTitle>
+        <CardDescription>{t.context.noSchoolIntro}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Link to="/profile" className="text-sm text-primary hover:underline">
+          {t.nav.profile}
+        </Link>
+      </CardContent>
+    </Card>
+  );
+}
+
 export function AdminLayout() {
   const { data: me } = useSuspenseQuery(meQuery);
   const logout = useLogout();
   const items: NavItem[] = [
-    { to: "/admin", label: t.admin.words, icon: ListChecks, exact: true },
-    { to: "/admin/recordings", label: t.admin.recordings, icon: Film },
-    { to: "/admin/groups", label: t.admin.groups, icon: Users },
-    { to: "/admin/moves", label: t.admin.moves, icon: Shuffle },
+    ...(isStaff(me)
+      ? [
+          { to: "/admin", label: t.admin.words, icon: ListChecks, exact: true },
+          { to: "/admin/recordings", label: t.admin.recordings, icon: Film },
+          { to: "/admin/groups", label: t.admin.groups, icon: Users },
+          { to: "/admin/moves", label: t.admin.moves, icon: Shuffle },
+        ]
+      : []),
     ...(me?.role === "admin" ? [{ to: "/admin/users", label: t.admin.users, icon: UserCog }] : []),
+    ...(me?.is_superadmin ? [{ to: "/admin/schools", label: t.admin.schools, icon: School }] : []),
   ];
   return (
     <div className="flex min-h-dvh flex-col">
@@ -148,14 +173,16 @@ export function AdminLayout() {
       <header className="sticky top-0 z-30 border-b bg-background/90 backdrop-blur">
         <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-4 px-4">
           <div className="flex items-center gap-3">
-            <Brand to="/admin" />
-            <span className="rounded-full bg-accent px-2 py-0.5 text-xs font-medium text-accent-foreground">
-              {t.admin.title}
+            <Brand to="/admin" compact />
+            <span className="hidden max-w-48 truncate rounded-full bg-accent px-2 py-0.5 text-xs font-medium text-accent-foreground sm:inline-block">
+              {me?.org ? `${t.admin.title} · ${me.org.name}` : t.admin.title}
             </span>
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex min-w-0 items-center gap-1">
+            {me && <ContextSwitcher me={me} admin />}
             <Link to="/" className={linkClass}>
-              {t.admin.toApp}
+              <Dumbbell className="size-4 sm:hidden" aria-hidden />
+              <span className="sr-only sm:not-sr-only">{t.admin.toApp}</span>
             </Link>
             <button type="button" className={cn(linkClass, "cursor-pointer")} onClick={() => logout.mutate()}>
               <LogOut className="size-4" aria-hidden />

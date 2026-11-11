@@ -3,6 +3,7 @@ from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
 
+from vgt.i18n import Locale, Weekday
 from vgt.models import ClientKind, ClipSource, Direction, JobKind, JobStatus, Role, WordStatus
 
 Username = Annotated[
@@ -12,7 +13,6 @@ Username = Annotated[
     ),
 ]
 Password = Annotated[str, StringConstraints(min_length=8, max_length=200)]
-Weekday = Literal["maandag", "dinsdag", "woensdag", "donderdag", "vrijdag", "zaterdag", "zondag"]
 ClipMode = Literal["replace", "extra"]
 SplitMethod = Literal["motion", "freeze"]
 
@@ -31,20 +31,58 @@ class ORM(BaseModel):
 # --- groups / users -------------------------------------------------------------------------
 
 
+class LanguageOut(ORM):
+    code: str
+    name: str
+    locale: Annotated[Locale, Field(description="Spoken language of the glosses")]
+
+
+class OrgBrief(ORM):
+    id: int
+    name: str
+    slug: str
+    language: LanguageOut
+
+
+class MyOrg(OrgBrief):
+    role: Role
+
+
 class GroupBrief(ORM):
     id: int
+    org_id: int
     year: int
-    weekday: str
+    weekday: Weekday
     label: str
     active: bool
 
 
-class Me(ORM):
+class Me(BaseModel):
     id: int
     username: str
-    role: Role
-    groups: list[GroupBrief]
+    is_superadmin: bool
+    locale: Annotated[
+        Locale | None, Field(description="Chosen interface language; null follows the school")
+    ]
     created_at: datetime
+    org: Annotated[OrgBrief | None, Field(description="The organisation the user works in now")]
+    role: Annotated[Role | None, Field(description="The user's role in that organisation")]
+    group: Annotated[GroupBrief | None, Field(description="The group the user works in now")]
+    organisations: list[MyOrg]
+    groups: Annotated[list[GroupBrief], Field(description="All groups, in every organisation")]
+
+
+class LocaleIn(BaseModel):
+    locale: Locale | None
+
+
+class ContextIn(BaseModel):
+    org_id: int
+    group_id: int | None = None
+
+
+class JoinIn(BaseModel):
+    invite_code: str
 
 
 # --- auth -----------------------------------------------------------------------------------
@@ -65,6 +103,7 @@ class LoginOut(BaseModel):
 
 class InviteOut(BaseModel):
     group: GroupBrief
+    org: OrgBrief
 
 
 class RegisterIn(BaseModel):
@@ -303,7 +342,7 @@ class GroupUpdate(BaseModel):
     active: bool | None = None
 
 
-class MemberOut(ORM):
+class MemberOut(BaseModel):
     id: int
     username: str
     role: Role
@@ -313,6 +352,7 @@ class MemberOut(ORM):
 
 class MoveStudentsIn(BaseModel):
     user_ids: list[int] = Field(min_length=1)
+    from_group_id: int
     to_group_id: int
 
 
@@ -339,7 +379,7 @@ class TempPasswordOut(BaseModel):
 
 
 class UserOut(MemberOut):
-    groups: list[GroupBrief]
+    groups: Annotated[list[GroupBrief], Field(description="Groups in this organisation")]
 
 
 class RoleIn(BaseModel):
@@ -349,3 +389,48 @@ class RoleIn(BaseModel):
 class UserCreate(BaseModel):
     username: Username
     role: Role = Role.teacher
+
+
+class MemberAddOut(BaseModel):
+    username: str
+    created: Annotated[bool, Field(description="False when an existing account was added")]
+    temporary_password: Annotated[str | None, Field(description="Only for a new account")] = None
+
+
+# --- superadmin: organisations --------------------------------------------------------------
+
+Slug = Annotated[
+    str,
+    StringConstraints(
+        strip_whitespace=True, to_lower=True, min_length=2, max_length=64, pattern=r"^[a-z0-9-]+$"
+    ),
+]
+OrgName = Annotated[str, StringConstraints(strip_whitespace=True, min_length=2, max_length=100)]
+
+
+class OrgOut(OrgBrief):
+    active: bool
+    created_at: datetime
+    member_count: int
+    group_count: int
+    word_count: int
+
+
+class OrgCreate(BaseModel):
+    name: OrgName
+    slug: Slug | None = None
+    language_code: str = "vgt"
+    admin_username: Annotated[
+        Username | None, Field(description="First admin: an existing user, or a new account")
+    ] = None
+
+
+class OrgCreateOut(BaseModel):
+    org: OrgOut
+    admin: MemberAddOut | None
+
+
+class OrgUpdate(BaseModel):
+    name: OrgName | None = None
+    language_code: str | None = None
+    active: bool | None = None

@@ -11,6 +11,7 @@ from vgt.config import get_settings
 from vgt.jobs import Worker
 from vgt.routers import (
     admin_groups,
+    admin_orgs,
     admin_users,
     admin_words,
     auth,
@@ -29,7 +30,18 @@ def _operation_id(route: APIRoute) -> str:
 
 def build_api() -> APIRouter:
     api = APIRouter(prefix="/api/v1")
-    for module in (auth, me, words, media, admin_words, recordings, admin_groups, admin_users):
+    modules = (
+        auth,
+        me,
+        words,
+        media,
+        admin_words,
+        recordings,
+        admin_groups,
+        admin_users,
+        admin_orgs,
+    )
+    for module in modules:
         api.include_router(module.router)
 
     @api.get("/health", tags=["meta"], response_model=HealthOut)

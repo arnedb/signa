@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from datetime import timedelta
 from typing import Annotated
 
@@ -6,8 +7,9 @@ from sqlalchemy.orm import Session
 
 from vgt.config import get_settings
 from vgt.db import get_db, utcnow
-from vgt.models import AuthSession, Role, User
+from vgt.models import AuthSession, Group, Organisation, Role, User
 from vgt.security import hash_token
+from vgt.services.context import Context, resolve
 
 DB = Annotated[Session, Depends(get_db)]
 
@@ -49,18 +51,55 @@ def current_user(user: Annotated[User | None, Depends(optional_user)]) -> User:
     return user
 
 
-def teacher(user: Annotated[User, Depends(current_user)]) -> User:
-    if user.role not in (Role.teacher, Role.admin):
+def superadmin(user: Annotated[User, Depends(current_user)]) -> User:
+    if not user.is_superadmin:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Superadmins only")
+    return user
+
+
+@dataclass
+class OrgContext:
+    """The user, working in an organisation: what a request inside a school needs."""
+
+    user: User
+    org: Organisation
+    role: Role
+    group: Group | None
+
+
+def context(user: Annotated[User, Depends(current_user)], db: DB) -> Context:
+    return resolve(db, user)
+
+
+def member(ctx: Annotated[Context, Depends(context)]) -> OrgContext:
+    if ctx.org is None or ctx.role is None:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "You are not a member of a school")
+    return OrgContext(user=ctx.user, org=ctx.org, role=ctx.role, group=ctx.group)
+
+
+def teacher(ctx: Annotated[OrgContext, Depends(member)]) -> OrgContext:
+    if ctx.role not in (Role.teacher, Role.admin):
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Teachers only")
-    return user
+    return ctx
 
 
-def admin(user: Annotated[User, Depends(current_user)]) -> User:
-    if user.role != Role.admin:
+def admin(ctx: Annotated[OrgContext, Depends(member)]) -> OrgContext:
+    if ctx.role != Role.admin:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Admins only")
-    return user
+    return ctx
+
+
+def org_group(db: Session, ctx: OrgContext, group_id: int) -> Group:
+    """A group of the current organisation, or 404."""
+    group = db.get(Group, group_id)
+    if group is None or group.org_id != ctx.org.id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Group not found")
+    return group
 
 
 CurrentUser = Annotated[User, Depends(current_user)]
-Teacher = Annotated[User, Depends(teacher)]
-Admin = Annotated[User, Depends(admin)]
+CurrentContext = Annotated[Context, Depends(context)]
+Member = Annotated[OrgContext, Depends(member)]
+Teacher = Annotated[OrgContext, Depends(teacher)]
+Admin = Annotated[OrgContext, Depends(admin)]
+Superadmin = Annotated[User, Depends(superadmin)]

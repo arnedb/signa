@@ -5,9 +5,10 @@ from tests.conftest import PASSWORD
 from vgt.models import User, Word, WordStatus
 
 
-def _words(db: Session, n: int) -> list[Word]:
+def _words(db: Session, n: int, org_id: int = 1) -> list[Word]:
     words = [
         Word(
+            org_id=org_id,
             gloss=f"w{i}",
             year=1,
             lesson=1,
@@ -56,7 +57,8 @@ def test_export_and_delete(student: TestClient, db: Session) -> None:
     )
     data = student.get("/api/v1/me/export").json()
     assert data["user"]["username"] == "student1"
-    assert data["user"]["groups"] == ["Jaar 1 · dinsdag"]
+    assert data["user"]["groups"] == [{"organisation": "School", "group": "Jaar 1 · dinsdag"}]
+    assert data["user"]["organisations"] == [{"name": "School", "role": "student"}]
     assert data["results"][0]["word"] == "w0"
 
     assert student.post("/api/v1/me/delete", json={"password": "wrong"}).status_code == 400

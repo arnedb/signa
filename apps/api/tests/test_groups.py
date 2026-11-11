@@ -6,7 +6,7 @@ from vgt.models import Group, Role
 
 
 def test_group_lifecycle_and_moves(teacher: TestClient, db: Session, group: Group) -> None:
-    r = teacher.post("/api/v1/admin/groups", json={"year": 2, "weekday": "dinsdag"})
+    r = teacher.post("/api/v1/admin/groups", json={"year": 2, "weekday": "tue"})
     assert r.status_code == 201
     year2 = r.json()
     assert year2["label"] == "Jaar 2 · dinsdag" and year2["teaching"]
@@ -19,7 +19,8 @@ def test_group_lifecycle_and_moves(teacher: TestClient, db: Session, group: Grou
     assert groups[group.id]["student_count"] == 3 and groups[group.id]["teacher_count"] == 1
 
     r = teacher.post(
-        "/api/v1/admin/groups/move-students", json={"user_ids": [a.id], "to_group_id": year2["id"]}
+        "/api/v1/admin/groups/move-students",
+        json={"user_ids": [a.id], "from_group_id": group.id, "to_group_id": year2["id"]},
     )
     assert r.json() == {"moved": 1}
     r = teacher.post(f"/api/v1/admin/groups/{group.id}/move-all", json={"to_group_id": year2["id"]})
@@ -34,7 +35,8 @@ def test_group_lifecycle_and_moves(teacher: TestClient, db: Session, group: Grou
 
     # Teachers cannot be moved like students.
     r = teacher.post(
-        "/api/v1/admin/groups/move-students", json={"user_ids": [1], "to_group_id": group.id}
+        "/api/v1/admin/groups/move-students",
+        json={"user_ids": [1], "from_group_id": year2["id"], "to_group_id": group.id},
     )
     assert r.status_code == 400
     _ = b

@@ -9,7 +9,8 @@ from sqlalchemy.orm import Session
 from vgt import db as vgt_db
 from vgt.config import get_settings
 from vgt.db import Base, make_engine
-from vgt.models import Group, Membership, Role, User
+from vgt.languages import ensure_languages
+from vgt.models import Group, Membership, Organisation, OrgMember, Role, User
 from vgt.security import hash_secret
 
 PASSWORD = "correct horse"
@@ -43,18 +44,55 @@ def app_client() -> Iterator[TestClient]:
         yield client
 
 
-@pytest.fixture
-def group(db: Session) -> Group:
-    g = Group(year=1, weekday="dinsdag", label="Jaar 1 · dinsdag", invite_code="invite-1")
+def make_org(db: Session, slug: str = "school", name: str = "School") -> Organisation:
+    ensure_languages(db)
+    org = Organisation(name=name, slug=slug, language_code="vgt")
+    db.add(org)
+    db.commit()
+    return org
+
+
+def make_group(db: Session, org: Organisation, code: str, year: int = 1) -> Group:
+    g = Group(
+        org_id=org.id, year=year, weekday="tue", label=f"Jaar {year} · {code}", invite_code=code
+    )
     db.add(g)
     db.commit()
     return g
 
 
-def make_user(db: Session, username: str, role: Role, group: Group | None = None) -> User:
-    user = User(username=username, password_hash=hash_secret(PASSWORD), role=role)
+@pytest.fixture
+def org(db: Session) -> Organisation:
+    return make_org(db)
+
+
+@pytest.fixture
+def group(db: Session, org: Organisation) -> Group:
+    g = Group(
+        org_id=org.id, year=1, weekday="tue", label="Jaar 1 · dinsdag", invite_code="invite-1"
+    )
+    db.add(g)
+    db.commit()
+    return g
+
+
+def make_user(
+    db: Session,
+    username: str,
+    role: Role,
+    group: Group | None = None,
+    org: Organisation | None = None,
+    superadmin: bool = False,
+) -> User:
+    """A user with ``role`` in the group's (or the given) organisation."""
+    user = User(username=username, password_hash=hash_secret(PASSWORD), is_superadmin=superadmin)
     db.add(user)
     db.flush()
+    org_id = group.org_id if group else (org.id if org else None)
+    if org_id is None:
+        org_id = db.query(Organisation.id).order_by(Organisation.id).limit(1).scalar()
+    if org_id is not None:
+        db.add(OrgMember(user_id=user.id, org_id=org_id, role=role))
     if group:
         db.add(Membership(user_id=user.id, group_id=group.id))
     db.commit()
@@ -80,9 +118,17 @@ def teacher(app_client: TestClient, db: Session, group: Group) -> TestClient:
 
 
 @pytest.fixture
-def admin(app_client: TestClient, db: Session) -> TestClient:
-    make_user(db, "admin1", Role.admin)
+def admin(app_client: TestClient, db: Session, org: Organisation) -> TestClient:
+    make_user(db, "admin1", Role.admin, org=org)
     return login(app_client, "admin1")
+
+
+@pytest.fixture
+def superadmin(app_client: TestClient, db: Session) -> TestClient:
+    ensure_languages(db)
+    db.commit()
+    make_user(db, "root", Role.admin, superadmin=True)
+    return login(app_client, "root")
 
 
 @pytest.fixture(scope="session")
