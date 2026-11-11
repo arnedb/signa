@@ -20,13 +20,19 @@ previous="$(sed -n 's/^VGT_IMAGE=//p' "$env_file")"
 set_image() { sed -i "s|^VGT_IMAGE=.*|VGT_IMAGE=$1|" "$env_file"; }
 
 echo "==> $env: $previous -> $image"
+# Pull first: if the image cannot be downloaded, nothing on the server has changed yet.
+if ! docker pull "$image"; then
+  echo "==> cannot pull $image. If the package is private, run 'docker login ghcr.io' as $(whoami)" \
+    "with a token that has read:packages, or make the package public (see docs/DEPLOY.md)." >&2
+  exit 1
+fi
+
 if [ -n "$("${compose[@]}" ps -q vgt 2>/dev/null)" ]; then
   echo "==> backing up the database"
   "${compose[@]}" exec -T vgt vgt backup --label "before-deploy"
 fi
 
 set_image "$image"
-"${compose[@]}" pull vgt
 "${compose[@]}" up -d --remove-orphans
 
 echo "==> waiting for the health check"
