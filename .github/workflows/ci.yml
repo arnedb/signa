@@ -23,10 +23,18 @@ jobs:
       - name: Install ffmpeg
         timeout-minutes: 8
         run: |
+          # The runners download packages from Azure's Ubuntu mirror first, which can stall
+          # for every package. Use Ubuntu's own archive instead, with short timeouts.
+          for f in /etc/apt/apt-mirrors.txt /etc/apt/sources.list.d/ubuntu.sources /etc/apt/sources.list; do
+            if [ -f "$f" ]; then
+              sudo sed -i 's#http://azure\.archive\.ubuntu\.com#http://archive.ubuntu.com#g' "$f"
+            fi
+          done
           # Skip rebuilding the man page index after the install; it is slow on these runners.
           sudo rm -f /var/lib/man-db/auto-update
-          sudo apt-get update -o Acquire::Retries=3
-          sudo apt-get install -y --no-install-recommends -o Acquire::Retries=3 ffmpeg
+          APT="-o Acquire::Retries=3 -o Acquire::http::Timeout=15"
+          sudo apt-get update $APT
+          sudo apt-get install -y --no-install-recommends $APT ffmpeg
       - run: uv sync --frozen
       - run: uv run ruff check .
       - run: uv run ruff format --check .
@@ -70,10 +78,18 @@ jobs:
       - name: Install ffmpeg
         timeout-minutes: 8
         run: |
+          # The runners download packages from Azure's Ubuntu mirror first, which can stall
+          # for every package. Use Ubuntu's own archive instead, with short timeouts.
+          for f in /etc/apt/apt-mirrors.txt /etc/apt/sources.list.d/ubuntu.sources /etc/apt/sources.list; do
+            if [ -f "$f" ]; then
+              sudo sed -i 's#http://azure\.archive\.ubuntu\.com#http://archive.ubuntu.com#g' "$f"
+            fi
+          done
           # Skip rebuilding the man page index after the install; it is slow on these runners.
           sudo rm -f /var/lib/man-db/auto-update
-          sudo apt-get update -o Acquire::Retries=3
-          sudo apt-get install -y --no-install-recommends -o Acquire::Retries=3 ffmpeg
+          APT="-o Acquire::Retries=3 -o Acquire::http::Timeout=15"
+          sudo apt-get update $APT
+          sudo apt-get install -y --no-install-recommends $APT ffmpeg
       - run: pnpm install --frozen-lockfile
       - run: cd apps/api && uv sync --frozen
       - run: pnpm --filter @vgt/web exec playwright install --with-deps chromium
