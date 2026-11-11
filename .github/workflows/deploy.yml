@@ -132,18 +132,38 @@ jobs:
           install -m 700 -d ~/.ssh
           printf '%s\n' "$KEY" > ~/.ssh/id_deploy && chmod 600 ~/.ssh/id_deploy
           printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+      - name: Check the deploy settings
+        env:
+          USER_: ${{ vars.DEPLOY_USER || secrets.DEPLOY_USER }}
+          HOST_: ${{ vars.DEPLOY_HOST || secrets.DEPLOY_HOST }}
+          PATH_: ${{ vars.DEPLOY_PATH || secrets.DEPLOY_PATH }}
+          KEY_: ${{ secrets.DEPLOY_SSH_KEY }}
+          KNOWN_: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+          VGT_HOST_: ${{ vars.VGT_HOST }}
+        run: |
+          missing=""
+          [ -n "$USER_" ] || missing="$missing DEPLOY_USER"
+          [ -n "$HOST_" ] || missing="$missing DEPLOY_HOST"
+          [ -n "$PATH_" ] || missing="$missing DEPLOY_PATH"
+          [ -n "$KEY_" ] || missing="$missing DEPLOY_SSH_KEY(secret)"
+          [ -n "$KNOWN_" ] || missing="$missing DEPLOY_KNOWN_HOSTS(secret)"
+          [ -n "$VGT_HOST_" ] || missing="$missing VGT_HOST(variable)"
+          if [ -n "$missing" ]; then
+            echo "::error::Missing in the '${{ needs.resolve.outputs.environment }}' environment:$missing"
+            exit 1
+          fi
       - name: Copy the compose file and deploy script
         env:
-          TARGET: ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}
-          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+          TARGET: ${{ vars.DEPLOY_USER || secrets.DEPLOY_USER }}@${{ vars.DEPLOY_HOST || secrets.DEPLOY_HOST }}
+          DEPLOY_PATH: ${{ vars.DEPLOY_PATH || secrets.DEPLOY_PATH }}
         run: |
           ssh -i ~/.ssh/id_deploy "$TARGET" "mkdir -p '$DEPLOY_PATH'"
           scp -i ~/.ssh/id_deploy compose.yaml deploy/deploy.sh deploy/env.dev.example deploy/env.pro.example \
             "$TARGET:$DEPLOY_PATH/"
       - name: Deploy
         env:
-          TARGET: ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}
-          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+          TARGET: ${{ vars.DEPLOY_USER || secrets.DEPLOY_USER }}@${{ vars.DEPLOY_HOST || secrets.DEPLOY_HOST }}
+          DEPLOY_PATH: ${{ vars.DEPLOY_PATH || secrets.DEPLOY_PATH }}
           ENVIRONMENT: ${{ needs.resolve.outputs.environment }}
           IMAGE: ${{ needs.resolve.outputs.image }}:${{ needs.resolve.outputs.sha }}
         run: ssh -i ~/.ssh/id_deploy "$TARGET" "bash '$DEPLOY_PATH/deploy.sh' '$ENVIRONMENT' '$IMAGE'"
