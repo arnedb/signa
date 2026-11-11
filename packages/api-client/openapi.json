@@ -206,6 +206,48 @@
         }
       }
     },
+    "/api/v1/me/locale": {
+      "put": {
+        "tags": [
+          "me"
+        ],
+        "summary": "Set Locale",
+        "description": "Choose the interface language. ``null`` follows the language of the current school.",
+        "operationId": "set_locale",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LocaleIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Me"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/me/context": {
       "put": {
         "tags": [
@@ -2778,6 +2820,15 @@
           },
           "weekday": {
             "type": "string",
+            "enum": [
+              "mon",
+              "tue",
+              "wed",
+              "thu",
+              "fri",
+              "sat",
+              "sun"
+            ],
             "title": "Weekday"
           },
           "label": {
@@ -2811,13 +2862,13 @@
           "weekday": {
             "type": "string",
             "enum": [
-              "maandag",
-              "dinsdag",
-              "woensdag",
-              "donderdag",
-              "vrijdag",
-              "zaterdag",
-              "zondag"
+              "mon",
+              "tue",
+              "wed",
+              "thu",
+              "fri",
+              "sat",
+              "sun"
             ],
             "title": "Weekday"
           },
@@ -2923,6 +2974,15 @@
           },
           "weekday": {
             "type": "string",
+            "enum": [
+              "mon",
+              "tue",
+              "wed",
+              "thu",
+              "fri",
+              "sat",
+              "sun"
+            ],
             "title": "Weekday"
           },
           "label": {
@@ -2985,13 +3045,13 @@
               {
                 "type": "string",
                 "enum": [
-                  "maandag",
-                  "dinsdag",
-                  "woensdag",
-                  "donderdag",
-                  "vrijdag",
-                  "zaterdag",
-                  "zondag"
+                  "mon",
+                  "tue",
+                  "wed",
+                  "thu",
+                  "fri",
+                  "sat",
+                  "sun"
                 ]
               },
               {
@@ -3193,14 +3253,50 @@
           "name": {
             "type": "string",
             "title": "Name"
+          },
+          "locale": {
+            "type": "string",
+            "enum": [
+              "nl",
+              "fr",
+              "en"
+            ],
+            "title": "Locale",
+            "description": "Spoken language of the glosses"
           }
         },
         "type": "object",
         "required": [
           "code",
-          "name"
+          "name",
+          "locale"
         ],
         "title": "LanguageOut"
+      },
+      "LocaleIn": {
+        "properties": {
+          "locale": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "nl",
+                  "fr",
+                  "en"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Locale"
+          }
+        },
+        "type": "object",
+        "required": [
+          "locale"
+        ],
+        "title": "LocaleIn"
       },
       "LoginIn": {
         "properties": {
@@ -3262,6 +3358,23 @@
             "type": "boolean",
             "title": "Is Superadmin"
           },
+          "locale": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "nl",
+                  "fr",
+                  "en"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Locale",
+            "description": "Chosen interface language; null follows the school"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
@@ -3321,6 +3434,7 @@
           "id",
           "username",
           "is_superadmin",
+          "locale",
           "created_at",
           "org",
           "role",

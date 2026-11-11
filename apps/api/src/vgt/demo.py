@@ -13,6 +13,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from vgt import media
+from vgt.i18n import group_label
 from vgt.languages import ensure_languages
 from vgt.models import (
     Clip,
@@ -75,7 +76,7 @@ def _org(db: Session, slug: str, name: str) -> Organisation:
 def _group(db: Session, org: Organisation, code: str, year: int, weekday: str) -> Group:
     group = db.scalars(select(Group).where(Group.invite_code == code)).first()
     if group is None:
-        label = f"Jaar {year} · {weekday}"
+        label = group_label(year, weekday, org.language.locale)
         group = Group(org_id=org.id, year=year, weekday=weekday, label=label, invite_code=code)
         db.add(group)
         db.flush()
@@ -133,8 +134,8 @@ def seed_demo(db: Session, clips_dir: Path | None = None) -> dict[str, int]:
     ensure_languages(db)
     org = _org(db, "demo", "Demoschool")
     second = _org(db, "demo-2", "Tweede school")
-    group = _group(db, org, "demo", 1, "dinsdag")
-    second_group = _group(db, second, "demo-2", 1, "zaterdag")
+    group = _group(db, org, "demo", 1, "tue")
+    second_group = _group(db, second, "demo-2", 1, "sat")
 
     for username, password, role in DEMO_USERS:
         user = db.scalars(select(User).where(User.username == username)).first()

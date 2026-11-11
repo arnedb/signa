@@ -59,6 +59,8 @@ class Language(Base):
 
     code: Mapped[str] = mapped_column(String(16), primary_key=True)
     name: Mapped[str] = mapped_column(String(100))
+    # The spoken language of the glosses, and the default interface language (nl, fr, en).
+    locale: Mapped[str] = mapped_column(String(8), default="nl")
 
 
 class Organisation(Base):
@@ -113,6 +115,8 @@ class User(Base):
     current_group_id: Mapped[int | None] = mapped_column(
         ForeignKey("groups.id", ondelete="SET NULL")
     )
+    # The interface language the user chose; None follows their school's language.
+    locale: Mapped[str | None] = mapped_column(String(8))
     created_at: Mapped[datetime] = mapped_column(default=utcnow)
     last_active_at: Mapped[datetime | None]
 
@@ -139,7 +143,7 @@ class Group(Base):
         ForeignKey("organisations.id", ondelete="CASCADE"), index=True
     )
     year: Mapped[int]
-    weekday: Mapped[str] = mapped_column(String(16))
+    weekday: Mapped[str] = mapped_column(String(16))  # mon … sun
     label: Mapped[str] = mapped_column(String(64))
     invite_code: Mapped[str] = mapped_column(String(32), unique=True, index=True)
     active: Mapped[bool] = mapped_column(Boolean, default=True)

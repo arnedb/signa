@@ -14,6 +14,8 @@ practise the signs from your course, by year, lesson or list.
 - **Schools** each have their own words, groups, recordings and members, and teach one sign
   language. Nothing is shared between schools. One account can be in several schools (with a
   role in each) and in several groups; a switcher in the header picks the school and group.
+- **Languages:** the app speaks Dutch, French and English. It follows the school's sign
+  language (LSFB: French) unless the user chooses another language in their profile.
 
 See [docs/PLAN.md](docs/PLAN.md) for the plan and roadmap.
 

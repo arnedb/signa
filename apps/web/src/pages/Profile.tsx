@@ -5,6 +5,7 @@ import { Download, KeyRound, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import { Field, PageTitle, RecoveryCode } from "@/components/common";
+import { LanguageSelect } from "@/components/LanguageSelect";
 import { Button } from "@/components/ui/button";
 import { Alert, Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog } from "@/components/ui/dialog";
@@ -48,6 +49,15 @@ export function ProfilePage() {
             <dd>{formatDate(me.created_at)}</dd>
           </dl>
           {me.organisations.some((o) => o.role === "student") && <p className="mt-3 text-xs text-muted-foreground">{t.profile.groupFixed}</p>}
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle>{t.language.label}</CardTitle>
+          <CardDescription>{t.language.autoHint}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <LanguageSelect me={me} className="h-10" />
         </CardContent>
       </Card>
       <ChangePassword />

@@ -33,11 +33,11 @@ export function MovesPage() {
           <table className="w-full text-sm">
             <thead className="border-b bg-muted/50 text-left text-xs text-muted-foreground">
               <tr>
-                <th className="px-3 py-2 font-medium">Datum</th>
+                <th className="px-3 py-2 font-medium">{t.admin.date}</th>
                 <th className="px-3 py-2 font-medium">{t.auth.username}</th>
-                <th className="px-3 py-2 font-medium">Van</th>
-                <th className="px-3 py-2 font-medium">Naar</th>
-                <th className="px-3 py-2 font-medium">Door</th>
+                <th className="px-3 py-2 font-medium">{t.admin.from}</th>
+                <th className="px-3 py-2 font-medium">{t.admin.to}</th>
+                <th className="px-3 py-2 font-medium">{t.admin.doneBy}</th>
               </tr>
             </thead>
             <tbody>

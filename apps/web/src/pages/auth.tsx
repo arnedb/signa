@@ -5,6 +5,7 @@ import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router"
 import { type FormEvent, type ReactNode, useState } from "react";
 
 import { Field, RecoveryCode, Spinner } from "@/components/common";
+import { LanguageSelect } from "@/components/LanguageSelect";
 import { Button } from "@/components/ui/button";
 import { Alert, Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -21,6 +22,7 @@ function AuthShell({ children }: { children: ReactNode }) {
         </div>
       </div>
       <Card className="w-full max-w-sm">{children}</Card>
+      <LanguageSelect />
     </main>
   );
 }

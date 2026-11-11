@@ -1,4 +1,5 @@
 import { ApiError, createApi, type Me, unwrap } from "@vgt/api-client";
+import { translateError } from "@vgt/core";
 import { QueryClient, queryOptions } from "@tanstack/react-query";
 
 export const api = createApi();
@@ -67,6 +68,8 @@ export function isStaff(me: Me | null | undefined): boolean {
   return me?.role === "teacher" || me?.role === "admin";
 }
 
+/** A message to show; API errors are translated when we know them. */
 export function errorMessage(e: unknown): string {
+  if (e instanceof ApiError) return translateError(e.message);
   return e instanceof Error ? e.message : String(e);
 }

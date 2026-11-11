@@ -6,7 +6,7 @@ from vgt.models import Group, Role
 
 
 def test_group_lifecycle_and_moves(teacher: TestClient, db: Session, group: Group) -> None:
-    r = teacher.post("/api/v1/admin/groups", json={"year": 2, "weekday": "dinsdag"})
+    r = teacher.post("/api/v1/admin/groups", json={"year": 2, "weekday": "tue"})
     assert r.status_code == 201
     year2 = r.json()
     assert year2["label"] == "Jaar 2 · dinsdag" and year2["teaching"]

@@ -140,3 +140,28 @@ test("a superadmin creates a school with its first admin", async ({ page }, info
   await expect(page.getByText(`${school} is aangemaakt.`)).toBeVisible();
   await expect(page.getByRole("row", { name: new RegExp(school) })).toContainText("Langue des signes");
 });
+
+test("a student switches the interface to French and back", async ({ page }, info) => {
+  const name = `zoe-${info.project.name}-${Date.now() % 100000}`;
+  await page.goto("/join/demo");
+  await page.getByLabel("Gebruikersnaam").fill(name);
+  await page.getByLabel("Wachtwoord", { exact: true }).fill("geheim-wachtwoord");
+  await page.getByLabel("Herhaal wachtwoord").fill("geheim-wachtwoord");
+  await page.getByRole("button", { name: "Account maken" }).click();
+  await page.getByRole("button", { name: "Ik heb de code bewaard" }).click();
+
+  await page.goto("/profile");
+  await page.getByLabel("Taal").selectOption("fr");
+  await expect(page.getByRole("heading", { name: "Profil" })).toBeVisible();
+  await expect(page.locator("html")).toHaveAttribute("lang", "fr");
+  await page.goto("/");
+  await expect(page.getByRole("heading", { name: "S’exercer" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Commencer (6)" })).toBeVisible();
+
+  // The account remembers it, and so does the login page on this device.
+  await page.goto("/profile");
+  await page.getByRole("button", { name: "Se déconnecter" }).click();
+  await expect(page.getByRole("heading", { name: "Se connecter" })).toBeVisible();
+  await page.getByLabel("Langue").selectOption("nl");
+  await expect(page.getByRole("heading", { name: "Aanmelden" })).toBeVisible();
+});

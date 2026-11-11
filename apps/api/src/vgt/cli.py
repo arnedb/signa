@@ -85,17 +85,20 @@ def create_org(name: str, language: str, slug: str | None, admin: str | None) ->
         db.commit()
 
 
-def add_language(code: str, name: str) -> None:
+def add_language(code: str, name: str, locale: str) -> None:
+    from vgt.i18n import LOCALES
     from vgt.models import Language
 
+    if locale not in LOCALES:
+        sys.exit(f"Choose a locale from: {', '.join(LOCALES)}")
     with session_factory()() as db:
         language = db.get(Language, code.lower())
         if language:
-            language.name = name
+            language.name, language.locale = name, locale
         else:
-            db.add(Language(code=code.lower(), name=name))
+            db.add(Language(code=code.lower(), name=name, locale=locale))
         db.commit()
-    print(f"Language {code.lower()}: {name}")
+    print(f"Language {code.lower()}: {name} ({locale})")
 
 
 def find_org(db: Session, slug: str | None) -> "Organisation":
@@ -160,6 +163,9 @@ def main(argv: list[str] | None = None) -> None:
     p = sub.add_parser("add-language", help="Add (or rename) a sign language")
     p.add_argument("code", help="Short code, e.g. vgt")
     p.add_argument("name", help="Full name, e.g. 'Vlaamse Gebarentaal'")
+    p.add_argument(
+        "--locale", default="nl", help="Spoken language of the glosses: nl, fr or en (default nl)"
+    )
 
     p = sub.add_parser("import-legacy", help="Import lexicon.db and the old MP4 files")
     p.add_argument("lexicon", type=Path)
@@ -195,7 +201,7 @@ def main(argv: list[str] | None = None) -> None:
             create_org(args.name, args.language, args.slug, args.admin)
         case "add-language":
             migrate()
-            add_language(args.code, args.name)
+            add_language(args.code, args.name, args.locale)
         case "import-legacy":
             from vgt.legacy import import_legacy, write_report
             from vgt.models import WordStatus

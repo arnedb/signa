@@ -1,8 +1,11 @@
+from typing import cast
+
 from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import aliased
 
 from vgt.deps import DB, Teacher, org_group
+from vgt.i18n import Weekday, group_label
 from vgt.models import Group, GroupEvent, Membership, OrgMember, Role, User
 from vgt.schemas import (
     GroupCreate,
@@ -22,10 +25,6 @@ from vgt.services.members import ensure_org_member
 router = APIRouter(prefix="/admin", tags=["admin: groups"])
 
 
-def default_label(year: int, weekday: str) -> str:
-    return f"Jaar {year} · {weekday}"
-
-
 def _roles(db: DB, org_id: int) -> dict[int, Role]:
     rows = db.execute(select(OrgMember.user_id, OrgMember.role).where(OrgMember.org_id == org_id))
     return {user_id: role for user_id, role in rows}
@@ -37,7 +36,7 @@ def _out(group: Group, ctx: Teacher, roles: dict[int, Role]) -> GroupOut:
         id=group.id,
         org_id=group.org_id,
         year=group.year,
-        weekday=group.weekday,
+        weekday=cast(Weekday, group.weekday),
         label=group.label,
         active=group.active,
         invite_code=group.invite_code,
@@ -69,7 +68,8 @@ def create_group(body: GroupCreate, ctx: Teacher, db: DB) -> GroupOut:
         org_id=ctx.org.id,
         year=body.year,
         weekday=body.weekday,
-        label=(body.label or "").strip() or default_label(body.year, body.weekday),
+        label=(body.label or "").strip()
+        or group_label(body.year, body.weekday, ctx.org.language.locale),
         invite_code=new_invite_code(),
     )
     db.add(group)
@@ -83,11 +83,13 @@ def create_group(body: GroupCreate, ctx: Teacher, db: DB) -> GroupOut:
 def update_group(group_id: int, body: GroupUpdate, ctx: Teacher, db: DB) -> GroupOut:
     group = org_group(db, ctx, group_id)
     changes = body.model_dump(exclude_unset=True)
-    relabel = group.label == default_label(group.year, group.weekday) and "label" not in changes
+    locale = ctx.org.language.locale
+    default = group_label(group.year, group.weekday, locale)
+    relabel = group.label == default and "label" not in changes
     for field, value in changes.items():
         setattr(group, field, value)
     if relabel or not group.label.strip():
-        group.label = default_label(group.year, group.weekday)
+        group.label = group_label(group.year, group.weekday, locale)
     db.commit()
     return _one(db, group, ctx)
 

@@ -54,7 +54,7 @@ def make_org(db: Session, slug: str = "school", name: str = "School") -> Organis
 
 def make_group(db: Session, org: Organisation, code: str, year: int = 1) -> Group:
     g = Group(
-        org_id=org.id, year=year, weekday="dinsdag", label=f"Jaar {year} · {code}", invite_code=code
+        org_id=org.id, year=year, weekday="tue", label=f"Jaar {year} · {code}", invite_code=code
     )
     db.add(g)
     db.commit()
@@ -69,7 +69,7 @@ def org(db: Session) -> Organisation:
 @pytest.fixture
 def group(db: Session, org: Organisation) -> Group:
     g = Group(
-        org_id=org.id, year=1, weekday="dinsdag", label="Jaar 1 · dinsdag", invite_code="invite-1"
+        org_id=org.id, year=1, weekday="tue", label="Jaar 1 · dinsdag", invite_code="invite-1"
     )
     db.add(g)
     db.commit()

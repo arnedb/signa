@@ -3,6 +3,7 @@ from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
+from vgt.i18n import Locale, Weekday
 from vgt.models import ClientKind, ClipSource, Direction, JobKind, JobStatus, Role, WordStatus
 
 Username = Annotated[
@@ -12,7 +13,6 @@ Username = Annotated[
     ),
 ]
 Password = Annotated[str, StringConstraints(min_length=8, max_length=200)]
-Weekday = Literal["maandag", "dinsdag", "woensdag", "donderdag", "vrijdag", "zaterdag", "zondag"]
 ClipMode = Literal["replace", "extra"]
 
 
@@ -33,6 +33,7 @@ class ORM(BaseModel):
 class LanguageOut(ORM):
     code: str
     name: str
+    locale: Annotated[Locale, Field(description="Spoken language of the glosses")]
 
 
 class OrgBrief(ORM):
@@ -50,7 +51,7 @@ class GroupBrief(ORM):
     id: int
     org_id: int
     year: int
-    weekday: str
+    weekday: Weekday
     label: str
     active: bool
 
@@ -59,12 +60,19 @@ class Me(BaseModel):
     id: int
     username: str
     is_superadmin: bool
+    locale: Annotated[
+        Locale | None, Field(description="Chosen interface language; null follows the school")
+    ]
     created_at: datetime
     org: Annotated[OrgBrief | None, Field(description="The organisation the user works in now")]
     role: Annotated[Role | None, Field(description="The user's role in that organisation")]
     group: Annotated[GroupBrief | None, Field(description="The group the user works in now")]
     organisations: list[MyOrg]
     groups: Annotated[list[GroupBrief], Field(description="All groups, in every organisation")]
+
+
+class LocaleIn(BaseModel):
+    locale: Locale | None
 
 
 class ContextIn(BaseModel):

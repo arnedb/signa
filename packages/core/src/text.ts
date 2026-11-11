@@ -1,6 +1,6 @@
 /**
- * All UI text, in Dutch. Kept in one place so a translation can be added later:
- * add a second object with the same shape and pick one at startup.
+ * All UI text in Dutch, the reference language. French (`text.fr.ts`) and English
+ * (`text.en.ts`) have the same shape, which the type checker enforces. `i18n.ts` picks one.
  */
 
 export const nl = {
@@ -41,6 +41,11 @@ export const nl = {
     admin: "Beheer",
     logout: "Afmelden",
     menu: "Menu",
+  },
+  language: {
+    label: "Taal",
+    auto: (name: string) => `Automatisch (${name})`,
+    autoHint: "Automatisch volgt de taal van je school.",
   },
   context: {
     label: "School en groep",
@@ -276,7 +281,15 @@ export const nl = {
     // Groups
     newGroup: "Nieuwe groep",
     weekday: "Weekdag",
-    weekdays: ["maandag", "dinsdag", "woensdag", "donderdag", "vrijdag", "zaterdag", "zondag"],
+    weekdays: {
+      mon: "maandag",
+      tue: "dinsdag",
+      wed: "woensdag",
+      thu: "donderdag",
+      fri: "vrijdag",
+      sat: "zaterdag",
+      sun: "zondag",
+    },
     label: "Naam",
     labelHint: "Leeg laten voor bv. “Jaar 1 · dinsdag”.",
     active: "Actief",
@@ -289,6 +302,11 @@ export const nl = {
     members: "Leden",
     teaching: "Ik geef les aan deze groep",
     lastActive: "Laatst actief",
+    date: "Datum",
+    from: "Van",
+    to: "Naar",
+    doneBy: "Door",
+    select: "Selecteer",
     never: "nooit",
     resetPassword: "Wachtwoord resetten",
     tempPassword: (u: string) => `Tijdelijk wachtwoord voor ${u}:`,
@@ -331,7 +349,48 @@ export const nl = {
     schoolsIntro:
       "Elke school heeft haar eigen woorden, groepen en leden. Niets wordt gedeeld tussen scholen.",
   },
+  errors: {
+    invalidInput: "Ongeldige invoer",
+    // Messages from the API, which are in English, by their exact text.
+    server: {
+      "A cut point is outside the video": "Een knippunt ligt buiten de video.",
+      "A school needs at least one admin": "Een school heeft minstens één beheerder nodig.",
+      "Admins only": "Alleen voor beheerders.",
+      "Already a member of this school": "Al lid van deze school.",
+      "Already undone": "Al ongedaan gemaakt.",
+      "Choose another group": "Kies een andere groep.",
+      "Empty file": "Het bestand is leeg.",
+      "File too large": "Het bestand is te groot.",
+      "Invite link is not valid": "Deze uitnodigingslink werkt niet (meer).",
+      "Not logged in": "Je bent niet aangemeld.",
+      "Only a superadmin can reset this user": "Alleen een beheerder van alle scholen kan deze gebruiker resetten.",
+      "Only an admin can reset this user": "Alleen een beheerder kan deze gebruiker resetten.",
+      "Only students can be moved": "Alleen studenten kunnen verplaatst worden.",
+      "Password is wrong": "Het wachtwoord klopt niet.",
+      "Superadmins only": "Alleen voor beheerders van alle scholen.",
+      "Teachers only": "Alleen voor leerkrachten.",
+      "The last admin cannot be deleted": "De laatste beheerder kan niet verwijderd worden.",
+      "The recording is not ready yet": "De opname is nog niet klaar.",
+      "This short name is taken": "Deze korte naam is al in gebruik.",
+      "This user is also a teacher in another school":
+        "Deze gebruiker is ook leerkracht in een andere school.",
+      "Upload a video file (mp4, mov, webm…)": "Upload een videobestand (mp4, mov, webm…).",
+      "Username is taken": "Deze gebruikersnaam is al in gebruik.",
+      "Username or recovery code is wrong": "Gebruikersnaam of herstelcode klopt niet.",
+      "Wrong username or password": "Gebruikersnaam of wachtwoord klopt niet.",
+      "You are not a member of a school": "Je hoort nog bij geen school.",
+      "You cannot remove your own admin role": "Je kunt je eigen beheerdersrol niet afnemen.",
+    } as Record<string, string>,
+  },
 } as const;
 
-export type Text = typeof nl;
-export const t: Text = nl;
+/** Like `typeof nl`, with plain strings, so another language can fill in its own text. */
+type Widen<T> = T extends string
+  ? string
+  : T extends (...args: infer A) => infer R
+    ? (...args: A) => Widen<R>
+    : T extends readonly (infer U)[]
+      ? readonly Widen<U>[]
+      : { [K in keyof T]: Widen<T[K]> };
+
+export type Text = Widen<typeof nl>;

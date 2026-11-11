@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from vgt.i18n import locale_or_default
 from vgt.models import Group, Organisation, Role, User
 from vgt.schemas import GroupBrief, Me, MyOrg, OrgBrief
 
@@ -86,6 +87,7 @@ def me_out(db: Session, user: User) -> Me:
         id=user.id,
         username=user.username,
         is_superadmin=user.is_superadmin,
+        locale=locale_or_default(user.locale) if user.locale else None,
         created_at=user.created_at,
         org=OrgBrief.model_validate(ctx.org) if ctx.org else None,
         role=ctx.role,

@@ -95,7 +95,15 @@ jobs         id, org_id, kind (transcode | split), status (queued | running | do
   A teacher can reset a student's password, an admin anyone's in the school, except for
   someone who is staff in another school.
 - **Languages:** each school teaches one sign language. A school teaching two languages is
-  two schools. UI text is still Dutch only.
+  two schools. Each sign language has a spoken language (`languages.locale`: VGT and NGT
+  Dutch, LSFB French): the language of its glosses and the default interface language.
+- **Interface languages:** Dutch, French and English. The order: the language chosen on the
+  account (`users.locale`, `PUT /me/locale`, so web and mobile agree), then the one chosen on
+  this device (login page), then the school's spoken language, then the browser's, then
+  Dutch. All text lives in `packages/core/src/text*.ts`; the type checker makes every
+  language fill in every text. API error messages are English and translated in the app.
+  Weekdays are stored as codes (`mon` … `sun`); a new group's default name is made in the
+  school's spoken language (“Année 1 · mardi”). Names people typed are never translated.
 - `words.position` is the order of a word within its list. `words.legacy_id` keeps the
   `guid` from the old app.
 - A student can be in several groups. Moving a student moves them out of one group into
@@ -193,8 +201,9 @@ Milestones 1 to 4 give a usable product. Milestone 6 was the largest.
 
 ## Ground rules
 
-- UI text is in Dutch, code and docs are in English. All UI text lives in one place so a
-  translation can be added later.
+- UI text is in Dutch, French and English; code and docs are in English. All UI text lives
+  in `packages/core/src/text*.ts`. Dutch (`text.ts`) is the reference: add a text there first,
+  then in every other language (the type checker lists what is missing).
 - Keyboard-only practice works (space or Enter to reveal, ←/→ to answer, Backspace or z to undo).
 - Secrets live only in GitHub secrets and the server `.env`, never in the repository.
 - Deploys only happen when CI passes. PRO only gets an image that already ran in DEV.

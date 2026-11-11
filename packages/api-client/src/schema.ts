@@ -109,6 +109,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/locale": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set Locale
+         * @description Choose the interface language. ``null`` follows the language of the current school.
+         */
+        put: operations["set_locale"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/context": {
         parameters: {
             query?: never;
@@ -1039,8 +1059,11 @@ export interface components {
             org_id: number;
             /** Year */
             year: number;
-            /** Weekday */
-            weekday: string;
+            /**
+             * Weekday
+             * @enum {string}
+             */
+            weekday: "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
             /** Label */
             label: string;
             /** Active */
@@ -1054,7 +1077,7 @@ export interface components {
              * Weekday
              * @enum {string}
              */
-            weekday: "maandag" | "dinsdag" | "woensdag" | "donderdag" | "vrijdag" | "zaterdag" | "zondag";
+            weekday: "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
             /** Label */
             label?: string | null;
         };
@@ -1084,8 +1107,11 @@ export interface components {
             org_id: number;
             /** Year */
             year: number;
-            /** Weekday */
-            weekday: string;
+            /**
+             * Weekday
+             * @enum {string}
+             */
+            weekday: "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
             /** Label */
             label: string;
             /** Active */
@@ -1104,7 +1130,7 @@ export interface components {
             /** Year */
             year?: number | null;
             /** Weekday */
-            weekday?: ("maandag" | "dinsdag" | "woensdag" | "donderdag" | "vrijdag" | "zaterdag" | "zondag") | null;
+            weekday?: ("mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun") | null;
             /** Label */
             label?: string | null;
             /** Active */
@@ -1185,6 +1211,17 @@ export interface components {
             code: string;
             /** Name */
             name: string;
+            /**
+             * Locale
+             * @description Spoken language of the glosses
+             * @enum {string}
+             */
+            locale: "nl" | "fr" | "en";
+        };
+        /** LocaleIn */
+        LocaleIn: {
+            /** Locale */
+            locale: ("nl" | "fr" | "en") | null;
         };
         /** LoginIn */
         LoginIn: {
@@ -1212,6 +1249,11 @@ export interface components {
             username: string;
             /** Is Superadmin */
             is_superadmin: boolean;
+            /**
+             * Locale
+             * @description Chosen interface language; null follows the school
+             */
+            locale: ("nl" | "fr" | "en") | null;
             /**
              * Created At
              * Format: date-time
@@ -1793,6 +1835,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Me"];
+                };
+            };
+        };
+    };
+    set_locale: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LocaleIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Me"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

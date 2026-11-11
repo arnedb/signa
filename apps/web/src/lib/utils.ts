@@ -1,3 +1,4 @@
+import { localeTag } from "@vgt/core";
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 
@@ -9,7 +10,7 @@ export function formatDate(iso: string | null | undefined, withTime = false): st
   if (!iso) return "";
   // The API sends UTC timestamps without a zone.
   const date = new Date(/[zZ]|[+-]\d\d:\d\d$/.test(iso) ? iso : `${iso}Z`);
-  return date.toLocaleString("nl-BE", {
+  return date.toLocaleString(localeTag(), {
     day: "numeric",
     month: "short",
     year: "numeric",

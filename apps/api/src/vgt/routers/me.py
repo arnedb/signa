@@ -12,6 +12,7 @@ from vgt.routers.auth import active_group
 from vgt.schemas import (
     ContextIn,
     JoinIn,
+    LocaleIn,
     Me,
     PasswordChangeIn,
     PasswordConfirmIn,
@@ -36,6 +37,14 @@ def _check_password(user: User, password: str) -> None:
 
 @router.get("", response_model=Me)
 def me(user: CurrentUser, db: DB) -> Me:
+    return me_out(db, user)
+
+
+@router.put("/locale", response_model=Me)
+def set_locale(body: LocaleIn, user: CurrentUser, db: DB) -> Me:
+    """Choose the interface language. ``null`` follows the language of the current school."""
+    user.locale = body.locale
+    db.commit()
     return me_out(db, user)
 
 
@@ -89,6 +98,7 @@ def export(user: CurrentUser, db: DB) -> dict[str, Any]:
         "exported_at": utcnow().isoformat(),
         "user": {
             "username": user.username,
+            "locale": user.locale,
             "created_at": user.created_at.isoformat(),
             "last_active_at": user.last_active_at.isoformat() if user.last_active_at else None,
             "organisations": [

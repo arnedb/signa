@@ -16,6 +16,7 @@ src/vgt/
   media.py         ffmpeg: standard encoding, thumbnails, auto-split with freezedetect
   legacy.py        import of the old app's lexicon.db and videos
   languages.py     the sign languages a school can teach
+  i18n.py          interface languages, weekday codes, default group names
   demo.py          demo schools, users, groups and words
   cli.py           the `vgt` command
 migrations/        Alembic
@@ -30,7 +31,7 @@ uv run vgt migrate                        # create / upgrade the database
 uv run vgt backup [--label x] [--keep n]  # consistent copy of the database
 uv run vgt create-admin <username>        # a superadmin, who manages the schools
 uv run vgt create-org "CVO Gent" --language vgt --admin <username>
-uv run vgt add-language <code> "<name>"   # vgt, lsfb and ngt exist already
+uv run vgt add-language <code> "<name>" --locale fr   # vgt, lsfb and ngt exist already
 uv run vgt import-legacy lexicon.db videos/ --org <school> --dry-run
 uv run vgt import-legacy lexicon.db videos/ --org <school> --report import-report.md
 uv run vgt demo [--clips folder]          # demo data
