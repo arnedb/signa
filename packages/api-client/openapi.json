@@ -513,7 +513,7 @@
           "me"
         ],
         "summary": "Difficult Words",
-        "description": "Published words of the current school whose most recent answer was wrong.",
+        "description": "Published words of the current school whose most recent answer was wrong.\n\nEach direction counts on its own: a word is difficult in a direction when the latest\nanswer in that direction was wrong. `directions` lists those directions.",
         "operationId": "difficult_words",
         "responses": {
           "200": {
@@ -522,7 +522,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "$ref": "#/components/schemas/WordOut"
+                    "$ref": "#/components/schemas/DifficultWordOut"
                   },
                   "type": "array",
                   "title": "Response Difficult Words"
@@ -2883,6 +2883,80 @@
           "org_id"
         ],
         "title": "ContextIn"
+      },
+      "DifficultWordOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "gloss": {
+            "type": "string",
+            "title": "Gloss"
+          },
+          "year": {
+            "type": "integer",
+            "title": "Year"
+          },
+          "lesson": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lesson"
+          },
+          "list_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "List Number"
+          },
+          "position": {
+            "type": "integer",
+            "title": "Position"
+          },
+          "notes": {
+            "type": "string",
+            "title": "Notes"
+          },
+          "clips": {
+            "items": {
+              "$ref": "#/components/schemas/ClipOut"
+            },
+            "type": "array",
+            "title": "Clips"
+          },
+          "directions": {
+            "items": {
+              "$ref": "#/components/schemas/Direction"
+            },
+            "type": "array",
+            "title": "Directions"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "gloss",
+          "year",
+          "lesson",
+          "list_number",
+          "position",
+          "notes",
+          "clips",
+          "directions"
+        ],
+        "title": "DifficultWordOut",
+        "description": "A word whose most recent answer was wrong, with the directions in which it was."
       },
       "Direction": {
         "type": "string",

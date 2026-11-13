@@ -18,6 +18,11 @@ export interface DeckWord {
   position?: number;
   notes?: string;
   clips: DeckClip[];
+  /**
+   * When set, practise the word only in these directions (one card each), whatever the
+   * deck's direction. Difficult words carry the directions in which they were difficult.
+   */
+  directions?: readonly Direction[];
 }
 
 export interface Card {
@@ -66,11 +71,20 @@ export function buildDeck(
   const playable = words.filter((w) => w.clips.length > 0);
   const ordered = options.shuffle ? shuffled(playable, random) : [...playable];
   const limited = options.limit ? ordered.slice(0, options.limit) : ordered;
-  return limited.map((word, i) => {
-    const direction: Direction =
-      options.direction === "mixed" ? (random() < 0.5 ? "w2s" : "s2w") : options.direction;
+  const pairs = limited.flatMap((word) =>
+    word.directions && word.directions.length > 0
+      ? word.directions.map((direction) => ({ word, direction }))
+      : [{ word, direction: pickDirection(options.direction, random) }],
+  );
+  // A word practised in both directions gives two cards: spread them over the deck too.
+  const spread = options.shuffle && pairs.length > limited.length ? shuffled(pairs, random) : pairs;
+  return spread.map(({ word, direction }, i) => {
     // The first clip is the primary one; extra clips are alternatives shown in the dictionary.
     const clip = word.clips[0] as DeckClip;
     return { key: `${word.id}:${direction}:${i}`, word, direction, clip };
   });
+}
+
+function pickDirection(choice: DirectionChoice, random: Random): Direction {
+  return choice === "mixed" ? (random() < 0.5 ? "w2s" : "s2w") : choice;
 }

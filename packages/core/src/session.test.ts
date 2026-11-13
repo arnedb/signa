@@ -43,6 +43,29 @@ describe("buildDeck", () => {
     expect(new Set(deck.map((c) => c.key)).size).toBe(deck.length);
   });
 
+  it("practises each word only in its own directions when it has them", () => {
+    const words: DeckWord[] = [
+      { ...word(1), directions: ["w2s"] },
+      { ...word(2), directions: ["w2s", "s2w"] },
+      word(3),
+    ];
+    const deck = buildDeck(words, { direction: "s2w", shuffle: false });
+    expect(deck.map((c) => [c.word.id, c.direction])).toEqual([
+      [1, "w2s"],
+      [2, "w2s"],
+      [2, "s2w"],
+      [3, "s2w"],
+    ]);
+    expect(new Set(deck.map((c) => c.key)).size).toBe(deck.length);
+
+    const mixed = buildDeck(words, { direction: "mixed", shuffle: true }, seededRandom(5));
+    expect(mixed).toHaveLength(4);
+    expect(mixed.filter((c) => c.word.id === 1).map((c) => c.direction)).toEqual(["w2s"]);
+    expect(new Set(mixed.filter((c) => c.word.id === 2).map((c) => c.direction))).toEqual(
+      new Set(["w2s", "s2w"]),
+    );
+  });
+
   it("shuffled does not change the input", () => {
     const input = [1, 2, 3, 4];
     const out = shuffled(input, seededRandom(3));

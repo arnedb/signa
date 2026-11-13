@@ -7,10 +7,11 @@ from sqlalchemy.orm import selectinload
 
 from vgt.db import utcnow
 from vgt.deps import DB, CurrentUser, Member
-from vgt.models import GroupEvent, OrgMember, Result, User, Word, WordStatus
+from vgt.models import Direction, GroupEvent, OrgMember, Result, User, Word, WordStatus
 from vgt.routers.auth import active_group
 from vgt.schemas import (
     ContextIn,
+    DifficultWordOut,
     JoinIn,
     LocaleIn,
     Me,
@@ -19,7 +20,6 @@ from vgt.schemas import (
     RecoveryCodeOut,
     ResultsIn,
     ResultsOut,
-    WordOut,
 )
 from vgt.security import hash_secret, new_recovery_code, verify_secret
 from vgt.services.auth import clear_cookie, end_all_sessions
@@ -172,17 +172,21 @@ def save_results(body: ResultsIn, user: CurrentUser, db: DB) -> ResultsOut:
     return ResultsOut(saved=saved)
 
 
-@router.get("/difficult-words", response_model=list[WordOut])
-def difficult_words(ctx: Member, db: DB) -> list[WordOut]:
-    """Published words of the current school whose most recent answer was wrong."""
+@router.get("/difficult-words", response_model=list[DifficultWordOut])
+def difficult_words(ctx: Member, db: DB) -> list[DifficultWordOut]:
+    """Published words of the current school whose most recent answer was wrong.
+
+    Each direction counts on its own: a word is difficult in a direction when the latest
+    answer in that direction was wrong. `directions` lists those directions.
+    """
     latest = (
-        select(Result.word_id, func.max(Result.id).label("last_id"))
+        select(Result.word_id, Result.direction, func.max(Result.id).label("last_id"))
         .where(Result.user_id == ctx.user.id)
-        .group_by(Result.word_id)
+        .group_by(Result.word_id, Result.direction)
         .subquery()
     )
-    words = db.scalars(
-        select(Word)
+    rows = db.execute(
+        select(Word, Result.direction)
         .join(latest, latest.c.word_id == Word.id)
         .join(Result, Result.id == latest.c.last_id)
         .where(
@@ -193,4 +197,16 @@ def difficult_words(ctx: Member, db: DB) -> list[WordOut]:
         .options(selectinload(Word.clips))
         .order_by(Word.year, Word.lesson, Word.list_number, Word.position, Word.id)
     ).all()
-    return [word_out(w) for w in words]
+    directions: dict[int, list[Direction]] = {}
+    words: dict[int, Word] = {}
+    for word, direction in rows:
+        words.setdefault(word.id, word)
+        directions.setdefault(word.id, []).append(direction)
+    order = list(Direction)
+    return [
+        DifficultWordOut(
+            **word_out(w).model_dump(),
+            directions=sorted(directions[w.id], key=order.index),
+        )
+        for w in words.values()
+    ]

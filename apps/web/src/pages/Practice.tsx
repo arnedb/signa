@@ -1,4 +1,4 @@
-import type { Word } from "@vgt/api-client";
+import type { DifficultWord, Word } from "@vgt/api-client";
 import {
   buildDeck,
   type Card as DeckCard,
@@ -69,7 +69,10 @@ function title(search: PracticeSearch): string {
   return parts.filter(Boolean).join(" · ");
 }
 
-function Session({ words, search }: { words: Word[]; search: PracticeSearch }) {
+/** Difficult words carry the directions in which they were difficult; only those are practised. */
+type PracticeWord = Word | DifficultWord;
+
+function Session({ words, search }: { words: PracticeWord[]; search: PracticeSearch }) {
   const qc = useQueryClient();
   const deck = useMemo(
     () => buildDeck(words, { direction: search.direction, shuffle: search.shuffle }),

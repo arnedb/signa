@@ -119,7 +119,7 @@ export const fr: Text = {
     startCount: (n) => `Commencer (${n})`,
     noWords: "Il n’y a pas encore de mots avec une vidéo ici.",
     difficultTitle: "Mes mots difficiles",
-    difficultIntro: "Les mots que tu ne connaissais pas la dernière fois.",
+    difficultIntro: "Les mots que tu ne connaissais pas la dernière fois. Tu les pratiques dans le sens où tu ne les connaissais pas.",
     difficultEmpty: "Aucun mot difficile. Bravo !",
     practiseDifficult: "Exercer les mots difficiles",
     progress: (i, n) => `${i} sur ${n}`,

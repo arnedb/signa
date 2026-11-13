@@ -1,4 +1,4 @@
-import type { Word } from "@vgt/api-client";
+import type { DifficultWord, Word } from "@vgt/api-client";
 import { t } from "@vgt/core";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
@@ -25,7 +25,7 @@ export function validateDictionarySearch(s: Record<string, unknown>): Dictionary
   };
 }
 
-function WordTile({ word }: { word: Word }) {
+function WordTile({ word, detail }: { word: Word; detail?: string }) {
   const clip = word.clips[0];
   return (
     <Link
@@ -45,6 +45,7 @@ function WordTile({ word }: { word: Word }) {
         <p className="text-xs text-muted-foreground">
           {[t.app.year(word.year), word.list_number && t.app.list(word.list_number)].filter(Boolean).join(" · ")}
         </p>
+        {detail && <p className="text-xs text-muted-foreground">{detail}</p>}
       </div>
     </Link>
   );
@@ -200,8 +201,18 @@ export function DifficultPage() {
       ) : words.data.length === 0 ? (
         <p>{t.practice.difficultEmpty}</p>
       ) : (
-        <WordGrid words={words.data} />
+        <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          {words.data.map((w) => (
+            <li key={w.id}>
+              <WordTile word={w} detail={difficultDirections(w)} />
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   );
+}
+
+function difficultDirections(word: DifficultWord): string {
+  return word.directions.map((d) => (d === "w2s" ? t.practice.w2s : t.practice.s2w)).join(" · ");
 }

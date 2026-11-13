@@ -270,6 +270,9 @@ export interface paths {
         /**
          * Difficult Words
          * @description Published words of the current school whose most recent answer was wrong.
+         *
+         *     Each direction counts on its own: a word is difficult in a direction when the latest
+         *     answer in that direction was wrong. `directions` lists those directions.
          */
         get: operations["difficult_words"];
         put?: never;
@@ -1080,6 +1083,30 @@ export interface components {
             org_id: number;
             /** Group Id */
             group_id?: number | null;
+        };
+        /**
+         * DifficultWordOut
+         * @description A word whose most recent answer was wrong, with the directions in which it was.
+         */
+        DifficultWordOut: {
+            /** Id */
+            id: number;
+            /** Gloss */
+            gloss: string;
+            /** Year */
+            year: number;
+            /** Lesson */
+            lesson: number | null;
+            /** List Number */
+            list_number: string | null;
+            /** Position */
+            position: number;
+            /** Notes */
+            notes: string;
+            /** Clips */
+            clips: components["schemas"]["ClipOut"][];
+            /** Directions */
+            directions: components["schemas"]["Direction"][];
         };
         /**
          * Direction
@@ -2177,7 +2204,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["WordOut"][];
+                    "application/json": components["schemas"]["DifficultWordOut"][];
                 };
             };
         };
