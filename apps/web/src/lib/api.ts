@@ -1,5 +1,5 @@
-import { ApiError, createApi, type Me, unwrap } from "@vgt/api-client";
-import { translateError } from "@vgt/core";
+import { ApiError, createApi, type Me, unwrap } from "@signa/api-client";
+import { translateError } from "@signa/core";
 import { infiniteQueryOptions, QueryClient, queryOptions } from "@tanstack/react-query";
 
 export const api = createApi();

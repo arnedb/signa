@@ -1,8 +1,8 @@
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
+from signa.models import Clip, ClipSource, Group, Organisation, Role, Word, WordStatus
 from tests.conftest import login, make_org, make_user
-from vgt.models import Clip, ClipSource, Group, Organisation, Role, Word, WordStatus
 
 
 def _word_with_clip(

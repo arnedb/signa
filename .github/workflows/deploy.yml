@@ -126,7 +126,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           push: true
-          build-args: VGT_RELEASE=${{ needs.resolve.outputs.sha }}
+          build-args: SIGNA_RELEASE=${{ needs.resolve.outputs.sha }}
           tags: ${{ needs.resolve.outputs.image }}:${{ needs.resolve.outputs.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -137,7 +137,7 @@ jobs:
     # Secrets, variables and protection rules (e.g. required reviewers for pro) come from here.
     environment:
       name: ${{ needs.resolve.outputs.environment }}
-      url: https://${{ vars.VGT_HOST }}
+      url: https://${{ vars.SIGNA_HOST }}
     concurrency:
       group: deploy-${{ needs.resolve.outputs.environment }}
       cancel-in-progress: false
@@ -160,7 +160,7 @@ jobs:
           PATH_: ${{ vars.DEPLOY_PATH || secrets.DEPLOY_PATH }}
           KEY_: ${{ secrets.DEPLOY_SSH_KEY }}
           KNOWN_: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
-          VGT_HOST_: ${{ vars.VGT_HOST }}
+          SIGNA_HOST_: ${{ vars.SIGNA_HOST }}
         run: |
           missing=""
           [ -n "$USER_" ] || missing="$missing DEPLOY_USER"
@@ -168,7 +168,7 @@ jobs:
           [ -n "$PATH_" ] || missing="$missing DEPLOY_PATH"
           [ -n "$KEY_" ] || missing="$missing DEPLOY_SSH_KEY(secret)"
           [ -n "$KNOWN_" ] || missing="$missing DEPLOY_KNOWN_HOSTS(secret)"
-          [ -n "$VGT_HOST_" ] || missing="$missing VGT_HOST(variable)"
+          [ -n "$SIGNA_HOST_" ] || missing="$missing SIGNA_HOST(variable)"
           if [ -n "$missing" ]; then
             echo "::error::Missing in the '${{ needs.resolve.outputs.environment }}' environment:$missing"
             exit 1
@@ -190,7 +190,7 @@ jobs:
         run: ssh -i ~/.ssh/id_deploy "$TARGET" "bash '$DEPLOY_PATH/deploy.sh' '$ENVIRONMENT' '$IMAGE'"
       - name: Check the public URL
         env:
-          URL: https://${{ vars.VGT_HOST }}/api/v1/health
+          URL: https://${{ vars.SIGNA_HOST }}/api/v1/health
           SHA: ${{ needs.resolve.outputs.sha }}
           ENVIRONMENT: ${{ needs.resolve.outputs.environment }}
         run: |

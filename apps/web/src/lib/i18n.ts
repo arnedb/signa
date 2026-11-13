@@ -1,10 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
-import type { Me } from "@vgt/api-client";
-import { type Locale, getLocale, pickLocale, setLocale, t } from "@vgt/core";
+import type { Me } from "@signa/api-client";
+import { type Locale, getLocale, pickLocale, setLocale, t } from "@signa/core";
 
 import { meQuery } from "@/lib/api";
 
-const STORAGE_KEY = "vgt.locale";
+const STORAGE_KEY = "signa.locale";
 
 /** The language chosen on this device, for the pages before logging in. */
 export function storedLocale(): string | null {

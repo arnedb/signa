@@ -4,9 +4,9 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from signa import jobs, media
+from signa.models import Clip, Direction, Organisation, Result, User, Word, WordEvent, WordStatus
 from tests.conftest import make_org
-from vgt import jobs, media
-from vgt.models import Clip, Direction, Organisation, Result, User, Word, WordEvent, WordStatus
 
 
 def _create(client: TestClient, **kw) -> dict:

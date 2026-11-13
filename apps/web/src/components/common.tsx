@@ -1,7 +1,7 @@
 import { Check, Copy, LoaderCircle } from "lucide-react";
 import { type ReactNode, useId, useState } from "react";
 
-import { t } from "@vgt/core";
+import { t } from "@signa/core";
 
 import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/card";

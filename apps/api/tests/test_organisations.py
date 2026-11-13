@@ -6,10 +6,10 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, select, text
 from sqlalchemy.orm import Session
 
+from signa import db as signa_db
+from signa.config import get_settings
+from signa.models import Group, Membership, Organisation, OrgMember, Role, User, Word, WordStatus
 from tests.conftest import PASSWORD, login, make_group, make_org, make_user
-from vgt import db as vgt_db
-from vgt.config import get_settings
-from vgt.models import Group, Membership, Organisation, OrgMember, Role, User, Word, WordStatus
 
 
 def _word(db: Session, org: Organisation, gloss: str) -> Word:
@@ -271,9 +271,9 @@ def test_migration_moves_data_into_one_school(tmp_path: Path, monkeypatch) -> No
     from alembic.config import Config
 
     url = f"sqlite:///{tmp_path}/old.db"
-    monkeypatch.setenv("VGT_DATABASE_URL", url)
+    monkeypatch.setenv("SIGNA_DATABASE_URL", url)
     get_settings.cache_clear()
-    vgt_db.set_engine(vgt_db.make_engine(url))
+    signa_db.set_engine(signa_db.make_engine(url))
     cfg = Config(str(Path(__file__).resolve().parents[1] / "alembic.ini"))
     command.upgrade(cfg, "0001")
     engine = create_engine(url)
@@ -316,7 +316,7 @@ def test_migration_moves_data_into_one_school(tmp_path: Path, monkeypatch) -> No
 
 
 def test_recordings_stay_in_their_school(teacher: TestClient, db: Session) -> None:
-    from vgt.models import Job, JobKind, JobStatus
+    from signa.models import Job, JobKind, JobStatus
 
     other = make_org(db, "other", "Other school")
     job = Job(

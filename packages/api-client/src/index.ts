@@ -24,7 +24,7 @@ export class ApiError extends Error {
 }
 
 export interface ClientOptions {
-  /** API origin, e.g. "https://vgt.arnedb.be". Empty for same-origin (web). */
+  /** API origin, e.g. "https://signa.arnedb.be". Empty for same-origin (web). */
   baseUrl?: string;
   /** Mobile: returns the session token, sent as a Bearer header. Web uses the cookie. */
   getToken?: () => string | null | Promise<string | null>;
@@ -36,7 +36,7 @@ export function createApi({ baseUrl = "", getToken, fetch: f }: ClientOptions = 
   const auth: Middleware = {
     async onRequest({ request }) {
       // Required for cookie sessions on state-changing requests (CSRF protection).
-      request.headers.set("X-VGT-Client", getToken ? "mobile" : "web");
+      request.headers.set("X-Signa-Client", getToken ? "mobile" : "web");
       const token = getToken ? await getToken() : null;
       if (token) request.headers.set("Authorization", `Bearer ${token}`);
       return request;

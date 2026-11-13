@@ -1,4 +1,4 @@
-import { t } from "@vgt/core";
+import { t } from "@signa/core";
 import { useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, Check, ChevronRight } from "lucide-react";

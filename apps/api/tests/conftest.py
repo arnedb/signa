@@ -6,25 +6,25 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
-from vgt import db as vgt_db
-from vgt.config import get_settings
-from vgt.db import Base, make_engine
-from vgt.languages import ensure_languages
-from vgt.models import Group, Membership, Organisation, OrgMember, Role, User
-from vgt.security import hash_secret
+from signa import db as signa_db
+from signa.config import get_settings
+from signa.db import Base, make_engine
+from signa.languages import ensure_languages
+from signa.models import Group, Membership, Organisation, OrgMember, Role, User
+from signa.security import hash_secret
 
 PASSWORD = "correct horse"
 
 
 @pytest.fixture(autouse=True)
 def settings(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
-    monkeypatch.setenv("VGT_DATABASE_URL", f"sqlite:///{tmp_path}/test.db")
-    monkeypatch.setenv("VGT_MEDIA_DIR", str(tmp_path / "media"))
-    monkeypatch.setenv("VGT_RUN_WORKER", "false")
+    monkeypatch.setenv("SIGNA_DATABASE_URL", f"sqlite:///{tmp_path}/test.db")
+    monkeypatch.setenv("SIGNA_MEDIA_DIR", str(tmp_path / "media"))
+    monkeypatch.setenv("SIGNA_RUN_WORKER", "false")
     get_settings.cache_clear()
     engine = make_engine(get_settings().database_url)
     Base.metadata.create_all(engine)
-    vgt_db.set_engine(engine)
+    signa_db.set_engine(engine)
     yield
     engine.dispose()
     get_settings.cache_clear()
@@ -32,15 +32,15 @@ def settings(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
 
 @pytest.fixture
 def db() -> Iterator[Session]:
-    with vgt_db.session_factory()() as session:
+    with signa_db.session_factory()() as session:
         yield session
 
 
 @pytest.fixture
 def app_client() -> Iterator[TestClient]:
-    from vgt.main import create_app
+    from signa.main import create_app
 
-    with TestClient(create_app(run_worker=False), headers={"X-VGT-Client": "web"}) as client:
+    with TestClient(create_app(run_worker=False), headers={"X-Signa-Client": "web"}) as client:
         yield client
 
 

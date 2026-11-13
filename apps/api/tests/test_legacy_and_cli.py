@@ -5,12 +5,12 @@ from pathlib import Path
 from sqlalchemy import create_engine, inspect, select
 from sqlalchemy.orm import Session
 
+from signa import db as signa_db
+from signa.config import get_settings
+from signa.db import Base
+from signa.legacy import import_legacy, lesson_of
+from signa.models import Organisation, Word
 from tests.conftest import make_org
-from vgt import db as vgt_db
-from vgt.config import get_settings
-from vgt.db import Base
-from vgt.legacy import import_legacy, lesson_of
-from vgt.models import Organisation, Word
 
 
 def _lexicon(tmp_path: Path, sample: Path) -> tuple[Path, Path]:
@@ -72,12 +72,12 @@ def test_lesson_of() -> None:
 
 
 def test_migrations_match_models(tmp_path: Path, monkeypatch) -> None:
-    from vgt.cli import migrate
+    from signa.cli import migrate
 
     url = f"sqlite:///{tmp_path}/migrated.db"
-    monkeypatch.setenv("VGT_DATABASE_URL", url)
+    monkeypatch.setenv("SIGNA_DATABASE_URL", url)
     get_settings.cache_clear()
-    vgt_db.set_engine(vgt_db.make_engine(url))
+    signa_db.set_engine(signa_db.make_engine(url))
     migrate()
     engine = create_engine(url)
     tables = set(inspect(engine).get_table_names()) - {"alembic_version"}
@@ -88,7 +88,7 @@ def test_migrations_match_models(tmp_path: Path, monkeypatch) -> None:
 
 
 def test_demo_seed(db: Session) -> None:
-    from vgt.demo import DEMO_WORDS, SECOND_WORDS, seed_demo
+    from signa.demo import DEMO_WORDS, SECOND_WORDS, seed_demo
 
     counts = seed_demo(db)
     words = [*DEMO_WORDS.values(), *SECOND_WORDS.values()]
@@ -100,9 +100,9 @@ def test_demo_seed(db: Session) -> None:
 def test_backup_keeps_newest(db: Session, tmp_path: Path, monkeypatch, org: Organisation) -> None:
     import os
 
-    from vgt.backup import backup
+    from signa.backup import backup
 
-    monkeypatch.setenv("VGT_BACKUP_DIR", str(tmp_path / "backups"))
+    monkeypatch.setenv("SIGNA_BACKUP_DIR", str(tmp_path / "backups"))
     get_settings.cache_clear()
     db.add(Word(org_id=org.id, gloss="huis", year=1))
     db.commit()
@@ -119,8 +119,8 @@ def test_backup_keeps_newest(db: Session, tmp_path: Path, monkeypatch, org: Orga
 
 
 def test_health_reports_environment(app_client, monkeypatch) -> None:
-    monkeypatch.setenv("VGT_ENVIRONMENT", "dev")
-    monkeypatch.setenv("VGT_RELEASE", "abc123")
+    monkeypatch.setenv("SIGNA_ENVIRONMENT", "dev")
+    monkeypatch.setenv("SIGNA_RELEASE", "abc123")
     get_settings.cache_clear()
     body = app_client.get("/api/v1/health").json()
     assert body["environment"] == "dev" and body["release"] == "abc123"

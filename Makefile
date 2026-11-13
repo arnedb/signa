@@ -1,13 +1,13 @@
 .PHONY: install dev api web test lint typecheck build api-client docker demo e2e deploy-dev deploy-pro
 
-DEMO_URL ?= https://github.com/arnedb/vgt-practice/releases/download/demo-media-v1/demo-media.tar.gz
+DEMO_URL ?= https://github.com/arnedb/signa/releases/download/demo-media-v1/demo-media.tar.gz
 
 install:
 	cd apps/api && uv sync
 	pnpm install
 
 api:
-	cd apps/api && uv run vgt migrate && uv run uvicorn vgt.main:app --reload --port 8000
+	cd apps/api && uv run signa migrate && uv run uvicorn signa.main:app --reload --port 8000
 
 web:
 	pnpm dev
@@ -31,14 +31,14 @@ build:
 	pnpm build
 
 e2e: build
-	pnpm --filter @vgt/web e2e
+	pnpm --filter @signa/web e2e
 
 # Regenerate the TypeScript client after changing the API.
 api-client:
 	pnpm api-client
 
 docker:
-	docker build --build-arg VGT_RELEASE=$$(git rev-parse HEAD) -t vgt-practice .
+	docker build --build-arg SIGNA_RELEASE=$$(git rev-parse HEAD) -t signa .
 
 # Start the Deploy workflow on GitHub (needs the gh CLI). REF defaults to the latest main.
 REF ?=
@@ -53,4 +53,4 @@ deploy-pro:
 demo:
 	mkdir -p data/demo-media
 	curl -fsSL "$(DEMO_URL)" | tar -xz -C data/demo-media || echo "Demo media not available; using generated clips."
-	cd apps/api && uv run vgt demo --clips ../../data/demo-media
+	cd apps/api && uv run signa demo --clips ../../data/demo-media

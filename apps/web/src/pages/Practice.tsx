@@ -1,4 +1,4 @@
-import type { DifficultWord, Word } from "@vgt/api-client";
+import type { DifficultWord, Word } from "@signa/api-client";
 import {
   buildDeck,
   type Card as DeckCard,
@@ -12,7 +12,7 @@ import {
   startSession,
   t,
   toResults,
-} from "@vgt/core";
+} from "@signa/core";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { useGlossLang } from "@/lib/i18n";

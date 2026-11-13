@@ -22,18 +22,18 @@ importers:
       '@radix-ui/react-slot':
         specifier: ^1.5.0
         version: 1.5.0(@types/react@19.3.0)(react@19.3.1)
+      '@signa/api-client':
+        specifier: workspace:*
+        version: link:../../packages/api-client
+      '@signa/core':
+        specifier: workspace:*
+        version: link:../../packages/core
       '@tanstack/react-query':
         specifier: ^5.107.1
         version: 5.107.1(@types/react@19.3.0)(react@19.3.1)
       '@tanstack/react-router':
         specifier: ^1.170.46
         version: 1.170.46(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
-      '@vgt/api-client':
-        specifier: workspace:*
-        version: link:../../packages/api-client
-      '@vgt/core':
-        specifier: workspace:*
-        version: link:../../packages/core
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1

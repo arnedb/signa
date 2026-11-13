@@ -1,11 +1,11 @@
-# vgt API
+# Signa API
 
 FastAPI + SQLAlchemy 2.0 + SQLite. See the root README for setup.
 
 ```
-src/vgt/
+src/signa/
   main.py          app factory; serves /api/v1, the docs at /api/docs and the built web app
-  config.py        settings from VGT_* environment variables
+  config.py        settings from SIGNA_* environment variables
   models.py        database tables
   schemas.py       request and response models (these become the TypeScript client)
   deps.py          sessions (cookie or Bearer), CSRF header check, school + role checks
@@ -18,7 +18,7 @@ src/vgt/
   languages.py     the sign languages a school can teach
   i18n.py          interface languages, weekday codes, default group names
   demo.py          demo schools, users, groups and words
-  cli.py           the `vgt` command
+  cli.py           the `signa` command
 migrations/        Alembic
 tests/             pytest (needs ffmpeg on PATH)
 ```
@@ -26,44 +26,44 @@ tests/             pytest (needs ffmpeg on PATH)
 ## Commands
 
 ```bash
-uv run vgt serve                          # migrate (+ demo data if VGT_SEED_DEMO), then serve
-uv run vgt migrate                        # create / upgrade the database
-uv run vgt backup [--label x] [--keep n]  # consistent copy of the database
-uv run vgt create-admin <username>        # a superadmin, who manages the schools
-uv run vgt create-org "CVO Gent" --language vgt --admin <username>
-uv run vgt add-language <code> "<name>" --locale fr   # vgt, lsfb and ngt exist already
-uv run vgt import-legacy lexicon.db videos/ --org <school> --dry-run
-uv run vgt import-legacy lexicon.db videos/ --org <school> --report import-report.md
-uv run vgt demo [--clips folder]          # demo data
-uv run vgt openapi > openapi.json
+uv run signa serve                          # migrate (+ demo data if SIGNA_SEED_DEMO), then serve
+uv run signa migrate                        # create / upgrade the database
+uv run signa backup [--label x] [--keep n]  # consistent copy of the database
+uv run signa create-admin <username>        # a superadmin, who manages the schools
+uv run signa create-org "CVO Gent" --language vgt --admin <username>
+uv run signa add-language <code> "<name>" --locale fr   # vgt, lsfb and ngt exist already
+uv run signa import-legacy lexicon.db videos/ --org <school> --dry-run
+uv run signa import-legacy lexicon.db videos/ --org <school> --report import-report.md
+uv run signa demo [--clips folder]          # demo data
+uv run signa openapi > openapi.json
 ```
 
 ## Settings
 
 | Variable | Default | |
 |---|---|---|
-| `VGT_ENVIRONMENT` | `local` | `dev` or `pro` in the deployments; shown by `/api/v1/health` |
-| `VGT_RELEASE` | `local` | git commit, set by the Docker build |
-| `VGT_SEED_DEMO` | `false` | demo data into an empty database at startup (refused in `pro`) |
-| `VGT_DATABASE_URL` | `sqlite:///./data/vgt.db` | |
-| `VGT_BACKUP_DIR`, `VGT_BACKUP_KEEP` | `./data/backups`, `14` | `vgt backup` |
-| `VGT_MEDIA_DIR` | `./data/media` | clips, thumbnails, recordings. Never in git |
-| `VGT_WEB_DIST` | — | folder with the built web app to serve |
-| `VGT_COOKIE_SECURE` | `false` | `true` behind HTTPS |
-| `VGT_SESSION_DAYS` | `30` | |
-| `VGT_RUN_WORKER` | `true` | run the job worker in the web process |
-| `VGT_MAX_UPLOAD_MB` | `2048` | |
-| `VGT_VIDEO_HEIGHT`, `VGT_VIDEO_CRF` | `480`, `26` | clip encoding |
-| `VGT_SPLIT_METHOD` | `motion` | auto-split: `motion` (rests between signs) or `freeze` (truly still frames) |
-| `VGT_SPLIT_REST_PERCENTILE` | `30` | `motion`: the quietest share of the video (%) that sets the rest level |
-| `VGT_SPLIT_NOISE`, `VGT_SPLIT_MIN_FREEZE` | `0.003`, `0.6` | `freeze`: noise tolerance, shortest still moment (s) |
-| `VGT_SPLIT_MIN_CLIP` | `0.6` | both: shorter parts (s) are dropped |
+| `SIGNA_ENVIRONMENT` | `local` | `dev` or `pro` in the deployments; shown by `/api/v1/health` |
+| `SIGNA_RELEASE` | `local` | git commit, set by the Docker build |
+| `SIGNA_SEED_DEMO` | `false` | demo data into an empty database at startup (refused in `pro`) |
+| `SIGNA_DATABASE_URL` | `sqlite:///./data/signa.db` | |
+| `SIGNA_BACKUP_DIR`, `SIGNA_BACKUP_KEEP` | `./data/backups`, `14` | `signa backup` |
+| `SIGNA_MEDIA_DIR` | `./data/media` | clips, thumbnails, recordings. Never in git |
+| `SIGNA_WEB_DIST` | — | folder with the built web app to serve |
+| `SIGNA_COOKIE_SECURE` | `false` | `true` behind HTTPS |
+| `SIGNA_SESSION_DAYS` | `30` | |
+| `SIGNA_RUN_WORKER` | `true` | run the job worker in the web process |
+| `SIGNA_MAX_UPLOAD_MB` | `2048` | |
+| `SIGNA_VIDEO_HEIGHT`, `SIGNA_VIDEO_CRF` | `480`, `26` | clip encoding |
+| `SIGNA_SPLIT_METHOD` | `motion` | auto-split: `motion` (rests between signs) or `freeze` (truly still frames) |
+| `SIGNA_SPLIT_REST_PERCENTILE` | `30` | `motion`: the quietest share of the video (%) that sets the rest level |
+| `SIGNA_SPLIT_NOISE`, `SIGNA_SPLIT_MIN_FREEZE` | `0.003`, `0.6` | `freeze`: noise tolerance, shortest still moment (s) |
+| `SIGNA_SPLIT_MIN_CLIP` | `0.6` | both: shorter parts (s) are dropped |
 
 ## Notes
 
 - **Sessions**: login with `client: "web"` sets an httpOnly cookie; `client: "mobile"` returns
   a token for a `Bearer` header. Only a SHA-256 of the token is stored.
-- **CSRF**: cookie-authenticated requests that change data must send `X-VGT-Client`. Other
+- **CSRF**: cookie-authenticated requests that change data must send `X-Signa-Client`. Other
   sites cannot add that header without a CORS preflight, which the API does not allow.
 - **Undo**: every word change and clip change is a `word_events` row. Undo applies the reverse
   and marks the event as undone. A field change cannot be undone after a later change to the
@@ -73,7 +73,7 @@ uv run vgt openapi > openapi.json
   clip's place (and its primary status) and the original is archived (`clip_trim` event).
 - **Auto-split**: `motion` measures the picture change 10 times per second with ffmpeg
   (`tblend` difference + `signalstats`), smooths it over 0.5 s and finds the rests. The threshold
-  is the `VGT_SPLIT_REST_PERCENTILE` level plus 20 % of the way to the busy (90th percentile)
+  is the `SIGNA_SPLIT_REST_PERCENTILE` level plus 20 % of the way to the busy (90th percentile)
   level. Boundaries are the middles of the rests between signs; segments run from one boundary
   to the next. `POST /admin/recordings/{id}/split` splits again (with either method) and keeps
   what was already applied. If that fails, the old segments stay and the error is shown.

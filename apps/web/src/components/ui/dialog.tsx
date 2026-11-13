@@ -2,7 +2,7 @@ import * as D from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
 import type { ReactNode } from "react";
 
-import { t } from "@vgt/core";
+import { t } from "@signa/core";
 
 export function Dialog({
   open,

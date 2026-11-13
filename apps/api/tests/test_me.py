@@ -1,8 +1,8 @@
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
+from signa.models import User, Word, WordStatus
 from tests.conftest import PASSWORD
-from vgt.models import User, Word, WordStatus
 
 
 def _words(db: Session, n: int, org_id: int = 1) -> list[Word]:

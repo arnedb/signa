@@ -1,5 +1,5 @@
-import type { Catalog, DifficultWord, Word } from "@vgt/api-client";
-import { t } from "@vgt/core";
+import type { Catalog, DifficultWord, Word } from "@signa/api-client";
+import { t } from "@signa/core";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, ChevronDown, Film, LoaderCircle, Pause, Play, Search, Snail, X } from "lucide-react";

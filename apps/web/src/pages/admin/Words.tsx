@@ -1,5 +1,5 @@
-import type { AdminWord, Schemas } from "@vgt/api-client";
-import { t } from "@vgt/core";
+import type { AdminWord, Schemas } from "@signa/api-client";
+import { t } from "@signa/core";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { ArrowRightLeft, Check, Film, Plus, Search, Trash2, Undo2, X } from "lucide-react";

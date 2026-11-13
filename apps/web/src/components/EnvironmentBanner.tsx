@@ -1,4 +1,4 @@
-import { t } from "@vgt/core";
+import { t } from "@signa/core";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect } from "react";
 

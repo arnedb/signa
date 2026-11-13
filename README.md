@@ -1,6 +1,6 @@
 # Signa
 
-Signa (repository: `vgt-practice`) is a practice tool for students of Flemish Sign Language (Vlaamse Gebarentaal, VGT):
+Signa is a practice tool for students of Flemish Sign Language (Vlaamse Gebarentaal, VGT):
 practise the signs from your course, by year, lesson or list.
 
 - **Students** join their group with an invite link, practise in both directions
@@ -88,7 +88,7 @@ version does not start. Setup, secrets, backups and restores: [docs/DEPLOY.md](d
 Import the old app into PRO (try it in DEV or on a copy first):
 
 ```bash
-docker compose -p vgt-pro --env-file .env.pro exec vgt vgt import-legacy /data/legacy/lexicon.db /data/legacy/videos --org school --dry-run
+docker compose -p signa-pro --env-file .env.pro exec signa signa import-legacy /data/legacy/lexicon.db /data/legacy/videos --org school --dry-run
 ```
 
 ## License

@@ -1,5 +1,5 @@
-import type { Me } from "@vgt/api-client";
-import { t } from "@vgt/core";
+import type { Me } from "@signa/api-client";
+import { t } from "@signa/core";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { type FormEvent, type ReactNode, useState } from "react";

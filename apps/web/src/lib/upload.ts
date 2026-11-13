@@ -1,4 +1,4 @@
-import type { Schemas } from "@vgt/api-client";
+import type { Schemas } from "@signa/api-client";
 import { useQuery } from "@tanstack/react-query";
 
 import { ApiError, api, unwrap } from "@/lib/api";
@@ -17,7 +17,7 @@ export function uploadFile<T>(
     for (const [k, v] of Object.entries(fields)) form.append(k, v);
     xhr.open("POST", url);
     xhr.withCredentials = true;
-    xhr.setRequestHeader("X-VGT-Client", "web");
+    xhr.setRequestHeader("X-Signa-Client", "web");
     xhr.upload.onprogress = (e) => {
       if (e.lengthComputable) onProgress?.(e.loaded / e.total);
     };

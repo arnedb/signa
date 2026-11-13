@@ -1,5 +1,5 @@
-import type { AdminReport, AdminWord, Clip, Schemas } from "@vgt/api-client";
-import { t } from "@vgt/core";
+import type { AdminReport, AdminWord, Clip, Schemas } from "@signa/api-client";
+import { t } from "@signa/core";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Archive, ArchiveRestore, ArrowLeft, Scissors, Star, Trash2, Undo2, Upload } from "lucide-react";

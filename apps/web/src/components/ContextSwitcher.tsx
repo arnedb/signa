@@ -1,5 +1,5 @@
-import type { Me } from "@vgt/api-client";
-import { t } from "@vgt/core";
+import type { Me } from "@signa/api-client";
+import { t } from "@signa/core";
 import { Link } from "@tanstack/react-router";
 import { ArrowLeftRight } from "lucide-react";
 

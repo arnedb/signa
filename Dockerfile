@@ -7,10 +7,10 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json ./
 COPY apps/web/package.json apps/web/
 COPY packages/core/package.json packages/core/
 COPY packages/api-client/package.json packages/api-client/
-RUN pnpm install --frozen-lockfile --filter "@vgt/web..."
+RUN pnpm install --frozen-lockfile --filter "@signa/web..."
 COPY packages packages
 COPY apps/web apps/web
-RUN pnpm --filter @vgt/web build
+RUN pnpm --filter @signa/web build
 
 FROM python:3.13-slim
 RUN apt-get update \
@@ -25,19 +25,19 @@ COPY apps/api ./
 RUN uv sync --frozen --no-dev
 COPY --from=web /src/apps/web/dist /app/web
 
-# The same image runs in dev and pro; VGT_ENVIRONMENT is set by the deployment.
-ARG VGT_RELEASE=unknown
+# The same image runs in dev and pro; SIGNA_ENVIRONMENT is set by the deployment.
+ARG SIGNA_RELEASE=unknown
 ENV PATH=/app/venv/bin:$PATH \
-    VGT_RELEASE=$VGT_RELEASE \
-    VGT_WEB_DIST=/app/web \
-    VGT_DATABASE_URL=sqlite:////data/vgt.db \
-    VGT_MEDIA_DIR=/data/media \
-    VGT_BACKUP_DIR=/data/backups \
-    VGT_COOKIE_SECURE=true
-RUN useradd --system --uid 10001 vgt && mkdir -p /data && chown vgt /data
-USER vgt
+    SIGNA_RELEASE=$SIGNA_RELEASE \
+    SIGNA_WEB_DIST=/app/web \
+    SIGNA_DATABASE_URL=sqlite:////data/signa.db \
+    SIGNA_MEDIA_DIR=/data/media \
+    SIGNA_BACKUP_DIR=/data/backups \
+    SIGNA_COOKIE_SECURE=true
+RUN useradd --system --uid 10001 signa && mkdir -p /data && chown signa /data
+USER signa
 VOLUME /data
 EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health')"
-CMD ["vgt", "serve"]
+CMD ["signa", "serve"]

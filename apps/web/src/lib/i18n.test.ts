@@ -1,4 +1,4 @@
-import type { Me } from "@vgt/api-client";
+import type { Me } from "@signa/api-client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { resolveLocale, storeLocale } from "@/lib/i18n";

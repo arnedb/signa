@@ -1,4 +1,4 @@
-import { type DirectionChoice, t } from "@vgt/core";
+import { type DirectionChoice, t } from "@signa/core";
 import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Flame, List, Play, Sparkles } from "lucide-react";
