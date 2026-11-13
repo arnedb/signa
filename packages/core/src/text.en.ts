@@ -103,7 +103,6 @@ export const en: Text = {
     what: "What",
     wholeYear: "Whole year",
     byLesson: "By lesson",
-    byList: "By list",
     lesson: "Lesson",
     list: "List",
     direction: "Direction",

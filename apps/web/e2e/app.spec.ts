@@ -23,22 +23,22 @@ test("a new student joins with the invite link and gets a recovery code", async 
   await expect(page.getByRole("heading", { name: "Oefenen" })).toBeVisible();
 });
 
-test("practise a list with the keyboard and repeat the missed words", async ({ page, isMobile }) => {
+test("practise a lesson with the keyboard and repeat the missed words", async ({ page, isMobile }) => {
   test.skip(isMobile, "keyboard flow");
   await login(page, "student", "demo-student");
   await expect(page.getByRole("heading", { name: "Oefenen" })).toBeVisible();
-  await page.getByLabel("Lijst", { exact: true }).selectOption("1.1");
+  await page.getByLabel("Les", { exact: true }).selectOption("1");
   await page.getByText("Lesvolgorde").click();
-  await page.getByRole("button", { name: "Start (6)" }).click();
+  await page.getByRole("button", { name: "Start (13)" }).click();
 
-  await expect(page.getByText("1 van 6")).toBeVisible();
-  for (let i = 0; i < 6; i++) {
+  await expect(page.getByText("1 van 13")).toBeVisible();
+  for (let i = 0; i < 13; i++) {
     await page.keyboard.press("Space");
     await expect(page.getByRole("button", { name: "Kende ik", exact: true })).toBeVisible();
     await page.keyboard.press(i < 2 ? "ArrowLeft" : "ArrowRight");
   }
   await expect(page.getByRole("heading", { name: "Klaar!" })).toBeVisible();
-  await expect(page.getByText("Je kende 4 van de 6 woorden.")).toBeVisible();
+  await expect(page.getByText("Je kende 11 van de 13 woorden.")).toBeVisible();
   await page.getByRole("button", { name: "Herhaal de 2 gemiste" }).click();
   await expect(page.getByText("Ronde 2 · 1 van 2")).toBeVisible();
 
@@ -173,7 +173,7 @@ test("a student switches the interface to French and back", async ({ page }, inf
   await expect(page.locator("html")).toHaveAttribute("lang", "fr");
   await page.goto("/");
   await expect(page.getByRole("heading", { name: "S’exercer" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Commencer (6)" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Commencer (13)" })).toBeVisible();
 
   // The account remembers it, and so does the login page on this device.
   await page.goto("/profile");
