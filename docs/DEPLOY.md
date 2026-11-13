@@ -73,8 +73,8 @@ For each environment (or once, if both are on the same server):
 2. DNS records for both hosts pointing to the server.
 3. A deploy user that may run `docker`, with the workflow's public SSH key in
    `~/.ssh/authorized_keys`.
-4. A deploy folder, e.g. `/srv/vgt`. Every deploy copies `compose.yaml`,
-   `compose.redirect.yaml`, `deploy.sh` and the env examples there. Before the first deploy, create the env files in that folder:
+4. A deploy folder, e.g. `/srv/vgt`. Every deploy copies `compose.yaml`, `deploy.sh` and the
+   env examples there. Before the first deploy, create the env files in that folder:
 
    ```bash
    cp env.dev.example .env.dev   # then set VGT_HOST
@@ -131,19 +131,6 @@ by the migration; rename it under *Beheer → Scholen*.
 DEV starts with the demo data when its database is empty: two schools, and the users
 `admin` / `demo-admin` (superadmin), `docent` / `demo-docent` and `student` / `demo-student`
 (a student in both schools).
-
-### Old addresses
-
-The app moved from `vgt-dev.arnedb.be` / `vgt.arnedb.be` to `signa-dev.arnedb.be` /
-`signa.arnedb.be`. While `VGT_OLD_HOST` is set in `.env.<env>`, the deploy also loads
-`compose.redirect.yaml`: Traefik answers the old host with a permanent redirect to the same
-path on `VGT_HOST`, so old invite links keep working. Sessions are cookies for one host, so
-users sign in once more on the new address. To stop the redirect, remove `VGT_OLD_HOST` from
-the env file and deploy again (keep the DNS record until then, or the certificate cannot
-renew).
-
-The Compose projects, volumes and image keep the `vgt` name: renaming them would start with
-empty volumes.
 
 ## Day to day
 

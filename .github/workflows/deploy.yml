@@ -179,12 +179,7 @@ jobs:
           DEPLOY_PATH: ${{ vars.DEPLOY_PATH || secrets.DEPLOY_PATH }}
         run: |
           ssh -i ~/.ssh/id_deploy "$TARGET" "mkdir -p '$DEPLOY_PATH'"
-          # Older commits (a rollback) may not have every file yet.
-          files=()
-          for f in compose.yaml compose.redirect.yaml deploy/deploy.sh deploy/env.dev.example deploy/env.pro.example; do
-            [ -f "$f" ] && files+=("$f")
-          done
-          scp -i ~/.ssh/id_deploy "${files[@]}" \
+          scp -i ~/.ssh/id_deploy compose.yaml deploy/deploy.sh deploy/env.dev.example deploy/env.pro.example \
             "$TARGET:$DEPLOY_PATH/"
       - name: Deploy
         env:
