@@ -5,12 +5,17 @@ videos from the old app, a first admin and daily backups (milestone 7 in
 [PLAN.md](PLAN.md)). After this, PRO follows the normal flow in [DEPLOY.md](DEPLOY.md):
 publish a release, it goes out the next night.
 
+> **Real class videos never go to DEV.** Anyone can log in to DEV with the demo accounts from
+> the README, and `admin` / `demo-admin` is a superadmin who sees every school. So the legacy
+> import is tried and done on PRO only (step 6), with a backup first. Until the launch only
+> you and the teacher have an account on PRO.
+
 Plan about two hours, most of it the video import. Do it on a day without class: the old app
-is stopped before the import (step 7), so students have no app until the launch (step 10).
+is stopped before the import (step 6), so students have no app until the launch (step 9).
 
 ```mermaid
 flowchart LR
-  a[DEV is green] --> b[Try the import on DEV] --> c[Server and GitHub setup]
+  a[DEV is green] --> c[Server and GitHub setup]
   c --> d[Release v1.0.0] --> e[Deploy and check] --> f[Admin and school]
   f --> g[Import into PRO] --> h[Backups] --> i[Smoke test] --> j[Announce]
 ```
@@ -32,7 +37,7 @@ source ~/.bashrc
 ```
 
 They work from any folder. `pro` needs `compose.yaml`, which the first deploy copies to the
-server, so before step 5 only `dev` works.
+server, so `pro` only works from step 4 on.
 
 ## 1. Choose the commit and check DEV
 
@@ -46,45 +51,15 @@ PRO only takes an image that already ran in DEV, and only a commit on `main` wit
    curl -s https://signa-dev.arnedb.be/api/v1/health
    ```
 
-   `release` is the commit SHA. This is the commit you will release.
+   `release` is the commit SHA. This is the commit you will release. It must include the
+   importer fix for old databases without a `year` column
+   ([#17](https://github.com/arnedb/signa/pull/17), merge commit `a9d93fd`), so use
+   `a9d93fd` or a newer commit; an older one stops the import with
+   `No table with guid, word, year, list_number, video_file found`.
 4. Click through DEV once: log in as `docent` / `demo-docent`, open a word, play a video,
    practise a list as `student` / `demo-student`.
 
-## 2. Try the legacy import on DEV first
-
-The import converts every old video, which takes time and can find problems. Find them on
-DEV, not on PRO. DEV has two demo schools, so make a separate school for the test:
-
-```bash
-dev exec signa signa create-org "Import test" --slug import-test
-dev exec signa mkdir -p /data/legacy
-docker cp /opt/sites/vgt/lexicon/. "$(dev ps -q signa)":/data/legacy/
-dev exec signa signa import-legacy /data/legacy/lexicon.db /data/legacy \
-  --org import-test --dry-run --report /data/import-report.md
-```
-
-`--report` must point into `/data`: it is the only folder the app user may write to.
-
-Read the report:
-
-```bash
-dev exec signa cat /data/import-report.md
-```
-
-If the dry run looks right, run it for real (leave out `--dry-run`), then log in to DEV as
-`admin` / `demo-admin`, switch to “Import test” and check some words and videos. Fix
-problems in the old data, or note them to fix in the app afterwards.
-
-Clean up afterwards so DEV does not keep a full copy of the class videos (as root, because
-`docker cp` copies the files as root):
-
-```bash
-dev exec -u root signa rm -rf /data/legacy
-```
-
-(Deactivate the “Import test” school under *Beheer → Scholen* if you do not need it.)
-
-## 3. One-time setup for PRO
+## 2. One-time setup for PRO
 
 Follow [DEPLOY.md → One-time setup](DEPLOY.md#one-time-setup). For PRO in particular, check:
 
@@ -108,7 +83,7 @@ Follow [DEPLOY.md → One-time setup](DEPLOY.md#one-time-setup). For PRO in part
   - secrets `DEPLOY_SSH_KEY` and `DEPLOY_KNOWN_HOSTS` (the same values as in `dev` if both run
     on one server).
 
-## 4. Publish the first release
+## 3. Publish the first release
 
 Use `v1.0.0` for the launch. Tag the commit from step 1, which already runs in DEV:
 
@@ -125,7 +100,7 @@ Or in GitHub: *Releases → Draft a new release*, new tag `v1.0.0`, target: that
 > the commit in `release`. If you want them to match, bump it to `1.0.0` in a commit first,
 > wait until that commit runs in DEV, and release that commit instead.
 
-## 5. Deploy and check
+## 4. Deploy and check
 
 Do not wait for the night; start it now:
 
@@ -158,7 +133,7 @@ no yellow “Testomgeving (DEV)” bar and no `[DEV]` in the tab title.
 Nobody uses PRO yet, so there is no rush: fix the cause and run `make deploy-pro REF=v1.0.0`
 again. To take PRO offline meanwhile: `pro down` (the data volume stays).
 
-## 6. First admin and school
+## 5. First admin and school
 
 On the server:
 
@@ -177,9 +152,10 @@ pro exec signa signa create-org "<school name>" --slug <short name> --language v
 
 Log in on `https://signa.arnedb.be` as the superadmin and check *Beheer → Scholen*.
 
-## 7. Import the old app into PRO
+## 6. Import the old app into PRO
 
-Same as step 2, now on PRO.
+The import converts every old video, which takes time and can find problems in the old data.
+The backup, the dry run and the report below let you check it before anything changes.
 
 First stop the old app completely, flashcards and manager. Nobody can change the lexicon
 after this, so PRO gets exactly what is on disk. Its login passwords are also in the `vgt`
@@ -200,7 +176,11 @@ pro exec signa signa import-legacy /data/legacy/lexicon.db /data/legacy \
 pro exec signa cat /data/import-report.md
 ```
 
-If the report matches what you saw on DEV, run it for real:
+`--report` must point into `/data`: it is the only folder the app user may write to.
+
+Read the report carefully: it lists every word with a missing video file or without a name.
+Those words are imported without a clip or skipped; note them to fix in Signa afterwards (the
+teacher uploads the missing clips in the word editor). Then run it for real:
 
 ```bash
 pro exec signa signa import-legacy /data/legacy/lexicon.db /data/legacy \
@@ -214,14 +194,15 @@ pro exec signa signa import-legacy /data/legacy/lexicon.db /data/legacy \
 - To start over completely: stop the container, restore the `before-import` backup (see
   [DEPLOY.md → Backups](DEPLOY.md#backups)), start it again.
 
-Keep the report (`docker cp "$(pro ps -q signa)":/data/import-report.md .`), check a few
-words in the app, then remove the copied files. The originals stay in `/opt/sites/vgt`:
+Keep the report (`docker cp "$(pro ps -q signa)":/data/import-report.md .`), log in as the
+superadmin and check some words and videos of each year and list, then remove the copied
+files. The originals stay in `/opt/sites/vgt`:
 
 ```bash
 pro exec -u root signa rm -rf /data/legacy
 ```
 
-## 8. Backups
+## 7. Backups
 
 Every deploy makes a backup, but a release can be weeks apart. Add the daily backup as the
 deploy user (`crontab -e`):
@@ -241,7 +222,7 @@ server. Also copy `/data/backups` and `/data/media` off the server regularly (fo
 with `rsync` or `restic` from the volume folder; `docker volume inspect signa-pro_data`
 shows where it is).
 
-## 9. Smoke test as each role
+## 8. Smoke test as each role
 
 On a phone and on a laptop:
 
@@ -253,7 +234,7 @@ On a phone and on a laptop:
 - [ ] **Teacher:** see the report under “Meldingen”, resolve it.
 - [ ] **Uploads:** upload one clip in the word editor and wait until it is converted.
 
-## 10. Launch
+## 9. Launch
 
 1. Send each group its invite link. Tell the students that progress from the old app is not
    carried over (it lived only in their browser).
