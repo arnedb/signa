@@ -1,5 +1,5 @@
-import type { AdminReport } from "@vgt/api-client";
-import { t } from "@vgt/core";
+import type { AdminReport } from "@signa/api-client";
+import { t } from "@signa/core";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { Check, Film, RotateCcw } from "lucide-react";

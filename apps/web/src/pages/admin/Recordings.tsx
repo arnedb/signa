@@ -1,5 +1,5 @@
-import type { AdminWord, Schemas } from "@vgt/api-client";
-import { t } from "@vgt/core";
+import type { AdminWord, Schemas } from "@signa/api-client";
+import { t } from "@signa/core";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { ArrowLeft, Pause, Play, Plus, RefreshCw, Scissors, Trash2, Upload } from "lucide-react";

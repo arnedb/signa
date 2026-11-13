@@ -1,4 +1,4 @@
-# vgt-practice: project plan
+# signa: project plan
 
 A practice tool for students of Flemish Sign Language (VGT) in evening classes.
 It replaces the earlier `vgt` app, and is rebuilt from scratch.
@@ -92,7 +92,7 @@ jobs         id, org_id, kind (transcode | split), status (queued | running | do
   When the user loses access, the school they used most recently (`org_members.last_used_at`)
   is chosen; with one school, that one. Logged-in users join another group, of any school, with its invite link
   (`POST /me/join`).
-- **Superadmins** (`vgt create-admin`) create and deactivate schools and act as admin in each.
+- **Superadmins** (`signa create-admin`) create and deactivate schools and act as admin in each.
   School admins manage their own members: add an existing account or a new one, change
   roles, remove someone from the school (the account stays). A school always keeps an admin.
   A teacher can reset a student's password, an admin anyone's in the school, except for
@@ -171,12 +171,12 @@ jobs         id, org_id, kind (transcode | split), status (queued | running | do
 - School admins manage the school's members and their roles: add an existing account, or
   create one with a temporary password.
 - Superadmins manage the schools (create, rename, deactivate) and are admin in each. The
-  first superadmin is created from the command line (`vgt create-admin`), the first school
-  with `vgt create-org` or in the web app.
+  first superadmin is created from the command line (`signa create-admin`), the first school
+  with `signa create-org` or in the web app.
 
 ## Data and media
 
-- **Legacy import** (`vgt import-legacy`, with `--dry-run`, `--draft` and `--report`;
+- **Legacy import** (`signa import-legacy`, with `--dry-run`, `--draft` and `--report`;
   `apps/api/scripts/import_legacy.py` is a wrapper around it): reads the old `lexicon.db`
   (`guid, word, year, list_number, video_file`) and its MP4 files. It creates one word per
   `(word, year, list_number)`, converts the videos to the standard encoding, makes thumbnails,
@@ -188,7 +188,7 @@ jobs         id, org_id, kind (transcode | split), status (queued | running | do
   release asset rather than committed, so the repository stays small. `make demo` downloads
   them and fills a demo database. Without the release asset, `make demo` uses generated test
   clips. The public demo instance uses only the real demo videos.
-- **Backups:** `vgt backup` makes a safe copy of the database while the app runs. Every deploy
+- **Backups:** `signa backup` makes a safe copy of the database while the app runs. Every deploy
   makes one first. A daily cron entry on the server adds more (see `docs/DEPLOY.md`).
 
 ## From the old labelling tool
@@ -221,7 +221,7 @@ label and trim videos. Its features now live in `/admin`:
 | 3 | Words and clips, legacy import, browse and search, protected video streaming | Done in code. Still to do: try the import on a copy of the real data |
 | 4 | Practice (`packages/core` + web UI), results, "Mijn moeilijke woorden" | Done |
 | 5 | Admin: word editing, audit log with undo, single clip upload, group management including moving students | Done |
-| 6 | Admin: recording sessions (jobs, auto-split, matching to words, replacing clips), plus the old labelling tool: rest-based split, timeline, new words from a recording, trimming clips | Done in code. The new year 1 videos come in after launch. Tune the split on a real class video (`VGT_SPLIT_REST_PERCENTILE`) |
+| 6 | Admin: recording sessions (jobs, auto-split, matching to words, replacing clips), plus the old labelling tool: rest-based split, timeline, new words from a recording, trimming clips | Done in code. The new year 1 videos come in after launch. Tune the split on a real class video (`SIGNA_SPLIT_REST_PERCENTILE`) |
 | 7 | Launch on `signa.arnedb.be` (PRO): legacy import into PRO, first admin, first release, daily backup cron on the server, announce to the groups | To do. Deploy with backup and rollback is already in place |
 | 8 | Portfolio: demo videos as the `demo-media-v1` release asset, public demo, screenshots in the README (the architecture diagram is there), `docs/case-study.md`, accessibility and Lighthouse pass | To do |
 | 9 | Mobile (later): Expo app with login, practice and browse, offline clip caching. Publish via EAS to TestFlight and Play internal testing first | To do. API, auth, client and `packages/core` are ready for it (see `apps/mobile/README.md`) |

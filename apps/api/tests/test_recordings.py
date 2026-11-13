@@ -3,9 +3,9 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from vgt import jobs
-from vgt.config import get_settings
-from vgt.media import rest_boundaries
+from signa import jobs
+from signa.config import get_settings
+from signa.media import rest_boundaries
 
 
 def upload(client: TestClient, video: Path, name: str = "les1.mov") -> int:
@@ -20,7 +20,7 @@ def test_recording_session(
     teacher: TestClient, sample_video: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     # The sample has truly still frames between the signs: freezedetect cuts tightly.
-    monkeypatch.setenv("VGT_SPLIT_METHOD", "freeze")
+    monkeypatch.setenv("SIGNA_SPLIT_METHOD", "freeze")
     get_settings.cache_clear()
     words = [
         teacher.post(

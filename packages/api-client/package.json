@@ -1,12 +1,12 @@
 {
-  "name": "@vgt/api-client",
+  "name": "@signa/api-client",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "main": "src/index.ts",
   "types": "src/index.ts",
   "scripts": {
-    "generate": "cd ../../apps/api && uv run vgt openapi > ../../packages/api-client/openapi.json && cd - && openapi-typescript openapi.json --default-non-nullable false -o src/schema.ts",
+    "generate": "cd ../../apps/api && uv run signa openapi > ../../packages/api-client/openapi.json && cd - && openapi-typescript openapi.json --default-non-nullable false -o src/schema.ts",
     "typecheck": "tsc -p .",
     "lint": "tsc -p .",
     "test": "echo 'no tests'"

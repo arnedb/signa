@@ -1,7 +1,7 @@
 import { Snail } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
-import { t } from "@vgt/core";
+import { t } from "@signa/core";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";

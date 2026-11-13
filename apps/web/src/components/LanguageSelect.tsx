@@ -1,11 +1,11 @@
-import { type Locale, LOCALE_NAMES, LOCALES, getLocale, t } from "@vgt/core";
+import { type Locale, LOCALE_NAMES, LOCALES, getLocale, t } from "@signa/core";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { Select } from "@/components/ui/input";
 import { api, meQuery, unwrap } from "@/lib/api";
 import { glossLocale, storeLocale } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
-import type { Me } from "@vgt/api-client";
+import type { Me } from "@signa/api-client";
 
 /**
  * Choose the interface language. Logged in, the choice is saved on the account (so the

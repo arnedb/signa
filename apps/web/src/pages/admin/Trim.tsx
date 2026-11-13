@@ -1,5 +1,5 @@
-import type { Clip } from "@vgt/api-client";
-import { t } from "@vgt/core";
+import type { Clip } from "@signa/api-client";
+import { t } from "@signa/core";
 import { useMutation } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight, Pause, Play, RotateCcw, Scissors, SkipBack, SkipForward } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";

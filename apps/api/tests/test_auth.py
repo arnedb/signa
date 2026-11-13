@@ -1,8 +1,8 @@
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
+from signa.models import Group, Role
 from tests.conftest import PASSWORD, make_user
-from vgt.models import Group, Role
 
 
 def test_register_with_invite_then_login(app_client: TestClient, group: Group) -> None:
@@ -19,7 +19,7 @@ def test_register_with_invite_then_login(app_client: TestClient, group: Group) -
     assert body["user"]["groups"][0]["id"] == group.id
     assert len(body["recovery_code"]) == 19
     assert body["token"] is None
-    assert "vgt_session" in r.cookies
+    assert "signa_session" in r.cookies
 
     assert app_client.get("/api/v1/me").json()["username"] == "lies"
 
@@ -39,7 +39,7 @@ def test_mobile_login_returns_bearer_token(app_client: TestClient, db: Session) 
         "/api/v1/auth/login", json={"username": "mo", "password": PASSWORD, "client": "mobile"}
     )
     token = r.json()["token"]
-    assert token and "vgt_session" not in r.cookies
+    assert token and "signa_session" not in r.cookies
     app_client.cookies.clear()
     r = app_client.get("/api/v1/me", headers={"Authorization": f"Bearer {token}"})
     assert r.json()["username"] == "mo"
@@ -53,9 +53,9 @@ def test_wrong_password(app_client: TestClient, db: Session) -> None:
 
 
 def test_cookie_requests_need_csrf_header(student: TestClient) -> None:
-    r = student.post("/api/v1/me/results", json={"results": []}, headers={"X-VGT-Client": ""})
+    r = student.post("/api/v1/me/results", json={"results": []}, headers={"X-Signa-Client": ""})
     assert r.status_code == 200  # header present (empty) is fine
-    del student.headers["X-VGT-Client"]
+    del student.headers["X-Signa-Client"]
     assert student.post("/api/v1/me/results", json={"results": []}).status_code == 403
     assert student.get("/api/v1/me").status_code == 200
 

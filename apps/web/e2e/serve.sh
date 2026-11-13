@@ -4,7 +4,7 @@ set -euo pipefail
 port="${1:-8765}"
 web_dist="$(cd "$(dirname "$0")/.." && pwd)/dist"
 tmp="$(mktemp -d)"
-export VGT_DATABASE_URL="sqlite:///$tmp/e2e.db" VGT_MEDIA_DIR="$tmp/media" VGT_WEB_DIST="$web_dist"
+export SIGNA_DATABASE_URL="sqlite:///$tmp/e2e.db" SIGNA_MEDIA_DIR="$tmp/media" SIGNA_WEB_DIST="$web_dist"
 cd "$(dirname "$0")/../../api"
-uv run vgt demo
-exec uv run uvicorn vgt.main:app --host 127.0.0.1 --port "$port"
+uv run signa demo
+exec uv run uvicorn signa.main:app --host 127.0.0.1 --port "$port"

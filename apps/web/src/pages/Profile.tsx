@@ -1,4 +1,4 @@
-import { t } from "@vgt/core";
+import { t } from "@signa/core";
 import { useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { Download, KeyRound, Trash2 } from "lucide-react";
@@ -166,7 +166,7 @@ function DataCard() {
   const [password, setPassword] = useState("");
   const exportData = useMutation({
     mutationFn: () => unwrap(api.GET("/api/v1/me/export")),
-    onSuccess: (data) => downloadJson(data, "vgt-mijn-gegevens.json"),
+    onSuccess: (data) => downloadJson(data, "signa-mijn-gegevens.json"),
   });
   const remove = useMutation({
     mutationFn: () => unwrap(api.POST("/api/v1/me/delete", { body: { password } })),

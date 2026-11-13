@@ -1,5 +1,5 @@
-import type { Schemas } from "@vgt/api-client";
-import { t } from "@vgt/core";
+import type { Schemas } from "@signa/api-client";
+import { t } from "@signa/core";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { KeyRound, Plus, UserMinus } from "lucide-react";
 import { useState } from "react";

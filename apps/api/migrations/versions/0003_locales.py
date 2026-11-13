@@ -22,7 +22,7 @@ depends_on: str | Sequence[str] | None = None
 
 DUTCH = ("maandag", "dinsdag", "woensdag", "donderdag", "vrijdag", "zaterdag", "zondag")
 CODES = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
-# A copy of the locales in vgt.languages.DEFAULT_LANGUAGES as they were for this migration.
+# A copy of the locales in signa.languages.DEFAULT_LANGUAGES as they were for this migration.
 LOCALES = {"vgt": "nl", "lsfb": "fr", "ngt": "nl"}
 
 

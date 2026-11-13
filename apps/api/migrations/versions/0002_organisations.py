@@ -19,7 +19,7 @@ down_revision: str | None = "0001"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
-# A copy of vgt.languages.DEFAULT_LANGUAGES as it was when this migration was written.
+# A copy of signa.languages.DEFAULT_LANGUAGES as it was when this migration was written.
 LANGUAGES = {
     "vgt": "Vlaamse Gebarentaal",
     "lsfb": "Langue des signes de Belgique francophone",

@@ -4,11 +4,11 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import Session
 
+from signa import db as signa_db
+from signa.config import get_settings
+from signa.i18n import group_label, weekday_name
+from signa.models import Role
 from tests.conftest import login, make_org, make_user
-from vgt import db as vgt_db
-from vgt.config import get_settings
-from vgt.i18n import group_label, weekday_name
-from vgt.models import Role
 
 
 def test_user_chooses_interface_language(student: TestClient) -> None:
@@ -54,9 +54,9 @@ def test_migration_turns_weekdays_into_codes(tmp_path: Path, monkeypatch) -> Non
     from alembic.config import Config
 
     url = f"sqlite:///{tmp_path}/old.db"
-    monkeypatch.setenv("VGT_DATABASE_URL", url)
+    monkeypatch.setenv("SIGNA_DATABASE_URL", url)
     get_settings.cache_clear()
-    vgt_db.set_engine(vgt_db.make_engine(url))
+    signa_db.set_engine(signa_db.make_engine(url))
     cfg = Config(str(Path(__file__).resolve().parents[1] / "alembic.ini"))
     command.upgrade(cfg, "0002")
     engine = create_engine(url)

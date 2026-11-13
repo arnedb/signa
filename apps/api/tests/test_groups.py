@@ -1,8 +1,8 @@
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
+from signa.models import Group, Role
 from tests.conftest import PASSWORD, login, make_user
-from vgt.models import Group, Role
 
 
 def test_group_lifecycle_and_moves(teacher: TestClient, db: Session, group: Group) -> None:

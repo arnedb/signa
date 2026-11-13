@@ -2,34 +2,34 @@
 # so dev and pro have separate containers, volumes (database + videos) and Traefik routers,
 # even on the same server:
 #
-#   docker compose -p vgt-dev --env-file .env.dev up -d
-#   docker compose -p vgt-pro --env-file .env.pro up -d
+#   docker compose -p signa-dev --env-file .env.dev up -d
+#   docker compose -p signa-pro --env-file .env.pro up -d
 #
 # deploy/deploy.sh does this (with a backup, a health check and a rollback).
 services:
-  vgt:
-    image: ${VGT_IMAGE:?set VGT_IMAGE in the env file}
+  signa:
+    image: ${SIGNA_IMAGE:?set SIGNA_IMAGE in the env file}
     restart: unless-stopped
     environment:
-      VGT_ENVIRONMENT: ${VGT_ENVIRONMENT:?set VGT_ENVIRONMENT to dev or pro}
-      VGT_SEED_DEMO: ${VGT_SEED_DEMO:-false}
-      VGT_COOKIE_SECURE: ${VGT_COOKIE_SECURE:-true}
-      VGT_SESSION_DAYS: ${VGT_SESSION_DAYS:-30}
-      VGT_MAX_UPLOAD_MB: ${VGT_MAX_UPLOAD_MB:-2048}
-      VGT_BACKUP_KEEP: ${VGT_BACKUP_KEEP:-14}
+      SIGNA_ENVIRONMENT: ${SIGNA_ENVIRONMENT:?set SIGNA_ENVIRONMENT to dev or pro}
+      SIGNA_SEED_DEMO: ${SIGNA_SEED_DEMO:-false}
+      SIGNA_COOKIE_SECURE: ${SIGNA_COOKIE_SECURE:-true}
+      SIGNA_SESSION_DAYS: ${SIGNA_SESSION_DAYS:-30}
+      SIGNA_MAX_UPLOAD_MB: ${SIGNA_MAX_UPLOAD_MB:-2048}
+      SIGNA_BACKUP_KEEP: ${SIGNA_BACKUP_KEEP:-14}
     volumes:
       - data:/data
     networks: [traefik]
     labels:
       - traefik.enable=true
       - traefik.docker.network=${TRAEFIK_NETWORK:-traefik}
-      - traefik.http.routers.vgt-${VGT_ENVIRONMENT}.rule=Host(`${VGT_HOST:?set VGT_HOST}`)
-      - traefik.http.routers.vgt-${VGT_ENVIRONMENT}.entrypoints=${TRAEFIK_ENTRYPOINT:-websecure}
-      - traefik.http.routers.vgt-${VGT_ENVIRONMENT}.tls.certresolver=${TRAEFIK_CERTRESOLVER:-letsencrypt}
-      - traefik.http.routers.vgt-${VGT_ENVIRONMENT}.middlewares=vgt-${VGT_ENVIRONMENT}-upload
-      - traefik.http.services.vgt-${VGT_ENVIRONMENT}.loadbalancer.server.port=8000
+      - traefik.http.routers.signa-${SIGNA_ENVIRONMENT}.rule=Host(`${SIGNA_HOST:?set SIGNA_HOST}`)
+      - traefik.http.routers.signa-${SIGNA_ENVIRONMENT}.entrypoints=${TRAEFIK_ENTRYPOINT:-websecure}
+      - traefik.http.routers.signa-${SIGNA_ENVIRONMENT}.tls.certresolver=${TRAEFIK_CERTRESOLVER:-letsencrypt}
+      - traefik.http.routers.signa-${SIGNA_ENVIRONMENT}.middlewares=signa-${SIGNA_ENVIRONMENT}-upload
+      - traefik.http.services.signa-${SIGNA_ENVIRONMENT}.loadbalancer.server.port=8000
       # Recording sessions are long videos.
-      - traefik.http.middlewares.vgt-${VGT_ENVIRONMENT}-upload.buffering.maxRequestBodyBytes=2147483648
+      - traefik.http.middlewares.signa-${SIGNA_ENVIRONMENT}-upload.buffering.maxRequestBodyBytes=2147483648
 
 volumes:
   data:

@@ -46,7 +46,7 @@ commits; turn it back on under *Actions → Deploy*.
 
 `deploy/deploy.sh <dev|pro> <image>`, run by the workflow over SSH:
 
-1. backs up the database (`vgt backup`, kept in the `/data/backups` folder of the volume),
+1. backs up the database (`signa backup`, kept in the `/data/backups` folder of the volume),
 2. writes the new image into `.env.<env>`, pulls it and restarts the container, which runs
    the database migrations on startup,
 3. waits for the container health check,
@@ -55,7 +55,7 @@ commits; turn it back on under *Actions → Deploy*.
 Then the workflow checks that `https://<host>/api/v1/health` reports the new commit and the
 right environment.
 
-Each environment is its own Compose project (`vgt-dev`, `vgt-pro`), so the two have separate
+Each environment is its own Compose project (`signa-dev`, `signa-pro`), so the two have separate
 containers, volumes and Traefik routers and can share one server.
 
 > A rollback restarts the old image on the current database. If the new release changed the
@@ -73,19 +73,19 @@ For each environment (or once, if both are on the same server):
 2. DNS records for both hosts pointing to the server.
 3. A deploy user that may run `docker`, with the workflow's public SSH key in
    `~/.ssh/authorized_keys`.
-4. A deploy folder, e.g. `/srv/vgt`. Every deploy copies `compose.yaml`, `deploy.sh` and the
+4. A deploy folder, e.g. `/srv/signa`. Every deploy copies `compose.yaml`, `deploy.sh` and the
    env examples there. Before the first deploy, create the env files in that folder:
 
    ```bash
-   cp env.dev.example .env.dev   # then set VGT_HOST
-   cp env.pro.example .env.pro   # then set VGT_HOST
+   cp env.dev.example .env.dev   # then set SIGNA_HOST
+   cp env.pro.example .env.pro   # then set SIGNA_HOST
    ```
 
    (Copy the examples from `deploy/` in this repository for the very first time.)
 5. Let the server download the image. GitHub makes a new package **private**, so the first
    deploy fails with `error from registry: denied`. Either:
    - make it public (the image holds only the open-source code, never class videos):
-     GitHub → your profile → **Packages** → `vgt-practice` → **Package settings** →
+     GitHub → your profile → **Packages** → `signa` → **Package settings** →
      **Change visibility** → Public; or
    - keep it private and, as the deploy user on the server, run `docker login ghcr.io -u <github user>`
      with a classic personal access token that has only `read:packages`.
@@ -101,12 +101,12 @@ For each environment (or once, if both are on the same server):
 
 | Kind | Name | Value |
 |---|---|---|
-| variable | `VGT_HOST` | `signa-dev.arnedb.be` / `signa.arnedb.be` |
+| variable | `SIGNA_HOST` | `signa-dev.arnedb.be` / `signa.arnedb.be` |
 | variable | `DEPLOY_HOST` | server name or IP |
 | variable | `DEPLOY_USER` | deploy user, e.g. `deploy` |
 | secret | `DEPLOY_SSH_KEY` | private key of the deploy user |
 | secret | `DEPLOY_KNOWN_HOSTS` | output of `ssh-keyscan <server>` |
-| variable | `DEPLOY_PATH` | deploy folder, e.g. `/opt/sites/vgt-practice` |
+| variable | `DEPLOY_PATH` | deploy folder, e.g. `/opt/sites/signa` |
 
 `DEPLOY_HOST`, `DEPLOY_USER` and `DEPLOY_PATH` may also be secrets; the workflow reads either.
 GitHub hides a secret's value everywhere in the logs, so a short value like `deploy` makes the
@@ -118,8 +118,8 @@ Secrets live only in GitHub and in the server's `.env.*` files, never in this re
 ### First admin and first school
 
 ```bash
-docker compose -p vgt-pro --env-file .env.pro exec vgt vgt create-admin <username>
-docker compose -p vgt-pro --env-file .env.pro exec vgt vgt create-org "CVO Gent" --language vgt --admin <teacher>
+docker compose -p signa-pro --env-file .env.pro exec signa signa create-admin <username>
+docker compose -p signa-pro --env-file .env.pro exec signa signa create-org "CVO Gent" --language vgt --admin <teacher>
 ```
 
 `create-admin` makes a superadmin, who manages the schools (*Beheer → Scholen*) and acts as
@@ -150,21 +150,21 @@ DEV starts with the demo data when its database is empty: two schools, and the u
 
 ## Backups
 
-`vgt backup` makes a consistent copy of the SQLite database while the app runs, in
-`/data/backups`, and keeps the newest `VGT_BACKUP_KEEP` copies. Every deploy makes one. For
+`signa backup` makes a consistent copy of the SQLite database while the app runs, in
+`/data/backups`, and keeps the newest `SIGNA_BACKUP_KEEP` copies. Every deploy makes one. For
 daily backups, add a cron job on the server, and copy the backups folder and `/data/media`
 off the server:
 
 ```cron
-15 3 * * * cd /srv/vgt && docker compose -p vgt-pro --env-file .env.pro exec -T vgt vgt backup --label daily
+15 3 * * * cd /srv/signa && docker compose -p signa-pro --env-file .env.pro exec -T signa signa backup --label daily
 ```
 
-To restore a backup: stop the container, copy the backup file over `/data/vgt.db` in the
-volume (`vgt-pro_data`), delete the `vgt.db-wal` and `vgt.db-shm` files next to it, and start
+To restore a backup: stop the container, copy the backup file over `/data/signa.db` in the
+volume (`signa-pro_data`), delete the `signa.db-wal` and `signa.db-shm` files next to it, and start
 the container again.
 
 ## Copying PRO data to DEV
 
 Only when needed for testing, and remember that DEV then holds real student accounts: copy a
-PRO backup from volume `vgt-pro_data` to `/data/vgt.db` in volume `vgt-dev_data` while DEV is
+PRO backup from volume `signa-pro_data` to `/data/signa.db` in volume `signa-dev_data` while DEV is
 stopped, the same way as a restore.

@@ -1,5 +1,5 @@
-import type { ReportReason } from "@vgt/api-client";
-import { t } from "@vgt/core";
+import type { ReportReason } from "@signa/api-client";
+import { t } from "@signa/core";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Flag } from "lucide-react";
 import { useState } from "react";

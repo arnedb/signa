@@ -1,15 +1,15 @@
 {
-  "name": "vgt-practice",
+  "name": "signa",
   "private": true,
   "license": "AGPL-3.0-or-later",
   "packageManager": "pnpm@10.28.0",
   "engines": { "node": ">=22" },
   "scripts": {
-    "dev": "pnpm --filter @vgt/web dev",
-    "build": "pnpm --filter @vgt/web build",
+    "dev": "pnpm --filter @signa/web dev",
+    "build": "pnpm --filter @signa/web build",
     "lint": "pnpm -r lint",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",
-    "api-client": "pnpm --filter @vgt/api-client generate"
+    "api-client": "pnpm --filter @signa/api-client generate"
   }
 }

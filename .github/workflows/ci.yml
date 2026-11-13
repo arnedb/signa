@@ -92,9 +92,9 @@ jobs:
           sudo apt-get install -y --no-install-recommends $APT ffmpeg
       - run: pnpm install --frozen-lockfile
       - run: cd apps/api && uv sync --frozen
-      - run: pnpm --filter @vgt/web exec playwright install --with-deps chromium
+      - run: pnpm --filter @signa/web exec playwright install --with-deps chromium
       - run: pnpm build
-      - run: pnpm --filter @vgt/web e2e
+      - run: pnpm --filter @signa/web e2e
         env:
           CI: "1"
       - uses: actions/upload-artifact@v4
@@ -108,11 +108,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: docker build --build-arg VGT_RELEASE=${{ github.sha }} -t vgt-practice:ci .
+      - run: docker build --build-arg SIGNA_RELEASE=${{ github.sha }} -t signa:ci .
       - name: Smoke test the image
         run: |
-          docker run -d --name vgt -p 8000:8000 -e VGT_ENVIRONMENT=dev -e VGT_SEED_DEMO=true vgt-practice:ci
+          docker run -d --name signa -p 8000:8000 -e SIGNA_ENVIRONMENT=dev -e SIGNA_SEED_DEMO=true signa:ci
           for i in $(seq 1 60); do curl -fs localhost:8000/api/v1/health && break; sleep 2; done
           curl -fs localhost:8000/api/v1/health | jq -e '.environment == "dev" and .release == "${{ github.sha }}"'
-          docker exec vgt vgt backup
+          docker exec signa signa backup
           curl -fs localhost:8000/ | grep -q '<div id="root">'

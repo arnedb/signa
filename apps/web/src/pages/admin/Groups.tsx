@@ -1,5 +1,5 @@
-import type { Schemas } from "@vgt/api-client";
-import { t, type Weekday, WEEKDAYS, weekdayName } from "@vgt/core";
+import type { Schemas } from "@signa/api-client";
+import { t, type Weekday, WEEKDAYS, weekdayName } from "@signa/core";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { ArrowLeft, KeyRound, Plus, RefreshCw } from "lucide-react";

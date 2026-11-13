@@ -1,4 +1,4 @@
-import { localeTag } from "@vgt/core";
+import { localeTag } from "@signa/core";
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 

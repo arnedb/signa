@@ -1,4 +1,4 @@
-import { t } from "@vgt/core";
+import { t } from "@signa/core";
 import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { Link, Outlet, useNavigate } from "@tanstack/react-router";
 import {

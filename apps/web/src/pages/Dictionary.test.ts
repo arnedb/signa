@@ -1,4 +1,4 @@
-import type { Word } from "@vgt/api-client";
+import type { Word } from "@signa/api-client";
 import { describe, expect, it } from "vitest";
 
 import { groupWords } from "@/pages/Dictionary";
