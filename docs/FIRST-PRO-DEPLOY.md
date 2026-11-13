@@ -16,14 +16,23 @@ flowchart LR
 ```
 
 In the commands below, the server folder is `/opt/sites/signa` (the `DEPLOY_PATH`) and the
-old app lives in `/opt/sites/vgt`. Change them if yours differ. On the server, this shortcut
-saves typing:
+old app lives in `/opt/sites/vgt`. Change them if yours differ.
+
+The server commands use two shell shortcuts, `dev` and `pro`, for the full `docker compose`
+command of each environment (`pro exec signa signa backup` is
+`docker compose -p signa-pro --env-file … -f … exec signa signa backup`). Log in as the deploy
+user (`ssh deploy@<server>`) and add them to `~/.bashrc` once, so every later login has them:
 
 ```bash
-cd /opt/sites/signa
-pro() { docker compose -p signa-pro --env-file .env.pro -f compose.yaml "$@"; }
-dev() { docker compose -p signa-dev --env-file .env.dev -f compose.yaml "$@"; }
+cat >> ~/.bashrc <<'EOF'
+dev() { docker compose -p signa-dev --env-file /opt/sites/signa/.env.dev -f /opt/sites/signa/compose.yaml "$@"; }
+pro() { docker compose -p signa-pro --env-file /opt/sites/signa/.env.pro -f /opt/sites/signa/compose.yaml "$@"; }
+EOF
+source ~/.bashrc
 ```
+
+They work from any folder. `pro` needs `compose.yaml`, which the first deploy copies to the
+server, so before step 5 only `dev` works.
 
 ## 1. Choose the commit and check DEV
 
@@ -177,7 +186,7 @@ after this, so PRO gets exactly what is on disk. Its login passwords are also in
 repository's history, so it must not run again on the internet:
 
 ```bash
-cd /opt/sites/vgt && docker compose down && cd /opt/sites/signa
+cd /opt/sites/vgt && docker compose down
 ```
 
 `docker compose down` removes only the containers; the `lexicon` folder stays. Then:
@@ -229,7 +238,7 @@ pro exec signa ls -l /data/backups
 
 The backups are inside the same volume as the database, so they do not survive a lost
 server. Also copy `/data/backups` and `/data/media` off the server regularly (for example
-with `rsync` or `restic` from the volume folder, `docker volume inspect signa-pro_data`
+with `rsync` or `restic` from the volume folder; `docker volume inspect signa-pro_data`
 shows where it is).
 
 ## 9. Smoke test as each role
