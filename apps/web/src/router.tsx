@@ -166,6 +166,12 @@ const recordingRoute = createRoute({
   beforeLoad: staffOnly,
   component: lazyRouteComponent(() => import("@/pages/admin/routes"), "AdminRecording"),
 });
+const reportsRoute = createRoute({
+  getParentRoute: () => adminRoute,
+  path: "/reports",
+  beforeLoad: staffOnly,
+  component: lazyRouteComponent(() => import("@/pages/admin/Reports"), "ReportsPage"),
+});
 const groupsRoute = createRoute({
   getParentRoute: () => adminRoute,
   path: "/groups",
@@ -214,6 +220,7 @@ export const routeTree = rootRoute.addChildren([
     adminWordRoute,
     recordingsRoute,
     recordingRoute,
+    reportsRoute,
     groupsRoute,
     groupRoute,
     movesRoute,

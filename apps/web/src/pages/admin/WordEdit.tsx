@@ -1,4 +1,4 @@
-import type { AdminWord, Clip, Schemas } from "@vgt/api-client";
+import type { AdminReport, AdminWord, Clip, Schemas } from "@vgt/api-client";
 import { t } from "@vgt/core";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
@@ -15,6 +15,7 @@ import { api, errorMessage, unwrap } from "@/lib/api";
 import { isRunning, uploadFile, useJob, type Job } from "@/lib/upload";
 import { formatDate, formatSeconds } from "@/lib/utils";
 import { Trimmer } from "@/pages/admin/Trim";
+import { OrphanReports, ReportCard, reportsQuery } from "@/pages/admin/Reports";
 import { StatusBadge } from "@/pages/admin/Words";
 
 type WordEvent = Schemas["WordEventOut"];
@@ -174,7 +175,7 @@ function WordForm({ word }: { word: AdminWord }) {
   );
 }
 
-function ClipCard({ clip, wordId }: { clip: Clip; wordId: number }) {
+function ClipCard({ clip, wordId, reports }: { clip: Clip; wordId: number; reports: AdminReport[] }) {
   const updated = useWordUpdated(wordId);
   const [trimming, setTrimming] = useState(false);
   const action = useMutation({
@@ -216,6 +217,14 @@ function ClipCard({ clip, wordId }: { clip: Clip; wordId: number }) {
           </Button>
         )}
       </div>
+      {reports.length > 0 && (
+        <div className="mt-3 flex flex-col gap-2">
+          <p className="text-sm font-medium">{t.report.openForWord(reports.length)}</p>
+          {reports.map((r) => (
+            <ReportCard key={r.id} report={r} />
+          ))}
+        </div>
+      )}
       <Dialog open={trimming} onOpenChange={setTrimming} title={t.admin.trimTitle} wide>
         {trimming && (
           <Trimmer
@@ -252,6 +261,7 @@ function Clips({ word }: { word: AdminWord }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [done]);
 
+  const reports = useQuery(reportsQuery("open", word.id)).data ?? [];
   const hasLive = word.clips.some((c) => !c.archived);
   return (
     <Card>
@@ -259,10 +269,11 @@ function Clips({ word }: { word: AdminWord }) {
         <CardTitle>{t.admin.clips}</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-6">
+        <OrphanReports reports={reports.filter((r) => !r.clip || !word.clips.some((c) => c.id === r.clip?.id))} />
         {word.clips.length > 0 && (
           <div className="grid gap-4 sm:grid-cols-2">
             {word.clips.map((c) => (
-              <ClipCard key={c.id} clip={c} wordId={word.id} />
+              <ClipCard key={c.id} clip={c} wordId={word.id} reports={reports.filter((r) => r.clip?.id === c.id)} />
             ))}
           </div>
         )}

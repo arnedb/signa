@@ -4,7 +4,16 @@ from typing import Annotated, Any, Literal
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
 
 from vgt.i18n import Locale, Weekday
-from vgt.models import ClientKind, ClipSource, Direction, JobKind, JobStatus, Role, WordStatus
+from vgt.models import (
+    ClientKind,
+    ClipSource,
+    Direction,
+    JobKind,
+    JobStatus,
+    ReportReason,
+    Role,
+    WordStatus,
+)
 
 Username = Annotated[
     str,
@@ -328,6 +337,32 @@ class RecordingApplyIn(BaseModel):
 
 class SplitIn(BaseModel):
     method: SplitMethod = "motion"
+
+
+# --- clip reports ---------------------------------------------------------------------------
+
+
+class ReportIn(BaseModel):
+    reason: ReportReason
+    comment: Annotated[str, StringConstraints(strip_whitespace=True, max_length=1000)] = ""
+
+
+class ReportOut(BaseModel):
+    id: int
+    created_at: datetime
+
+
+class AdminReportOut(BaseModel):
+    id: int
+    word_id: int
+    gloss: str
+    clip: Annotated[ClipOut | None, Field(description="null when the clip no longer exists")]
+    reason: ReportReason
+    comment: str
+    user: EventUser | None
+    created_at: datetime
+    resolved_at: datetime | None
+    resolver: EventUser | None
 
 
 class TrimIn(BaseModel):

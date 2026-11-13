@@ -1867,6 +1867,235 @@
         }
       }
     },
+    "/api/v1/clips/{clip_id}/reports": {
+      "post": {
+        "tags": [
+          "reports"
+        ],
+        "summary": "Report Clip",
+        "description": "Report a problem with a clip of the current school: the wrong sign, a bad start or\nend… The teachers see it in /admin/reports.",
+        "operationId": "report_clip",
+        "parameters": [
+          {
+            "name": "clip_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Clip Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReportIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/reports": {
+      "get": {
+        "tags": [
+          "reports"
+        ],
+        "summary": "List Reports",
+        "description": "Reported problems with clips of the current school, newest first.",
+        "operationId": "admin_list_reports",
+        "parameters": [
+          {
+            "name": "state",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "open",
+                "resolved",
+                "all"
+              ],
+              "type": "string",
+              "default": "open",
+              "title": "State"
+            }
+          },
+          {
+            "name": "word_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Word Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AdminReportOut"
+                  },
+                  "title": "Response Admin List Reports"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/reports/count": {
+      "get": {
+        "tags": [
+          "reports"
+        ],
+        "summary": "Count Open Reports",
+        "description": "The number of open reports, for the menu.",
+        "operationId": "admin_count_open_reports",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "integer",
+                  "title": "Response Admin Count Open Reports"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/reports/{report_id}/resolve": {
+      "post": {
+        "tags": [
+          "reports"
+        ],
+        "summary": "Resolve Report",
+        "operationId": "admin_resolve_report",
+        "parameters": [
+          {
+            "name": "report_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Report Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminReportOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/reports/{report_id}/reopen": {
+      "post": {
+        "tags": [
+          "reports"
+        ],
+        "summary": "Reopen Report",
+        "operationId": "admin_reopen_report",
+        "parameters": [
+          {
+            "name": "report_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Report Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminReportOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/admin/groups": {
       "get": {
         "tags": [
@@ -2702,6 +2931,91 @@
   },
   "components": {
     "schemas": {
+      "AdminReportOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "word_id": {
+            "type": "integer",
+            "title": "Word Id"
+          },
+          "gloss": {
+            "type": "string",
+            "title": "Gloss"
+          },
+          "clip": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ClipOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "null when the clip no longer exists"
+          },
+          "reason": {
+            "$ref": "#/components/schemas/ReportReason"
+          },
+          "comment": {
+            "type": "string",
+            "title": "Comment"
+          },
+          "user": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EventUser"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "resolved_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolved At"
+          },
+          "resolver": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EventUser"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "word_id",
+          "gloss",
+          "clip",
+          "reason",
+          "comment",
+          "user",
+          "created_at",
+          "resolved_at",
+          "resolver"
+        ],
+        "title": "AdminReportOut"
+      },
       "AdminWordOut": {
         "properties": {
           "id": {
@@ -4459,6 +4773,54 @@
           "recovery_code"
         ],
         "title": "RegisterOut"
+      },
+      "ReportIn": {
+        "properties": {
+          "reason": {
+            "$ref": "#/components/schemas/ReportReason"
+          },
+          "comment": {
+            "type": "string",
+            "maxLength": 1000,
+            "title": "Comment",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "reason"
+        ],
+        "title": "ReportIn"
+      },
+      "ReportOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "created_at"
+        ],
+        "title": "ReportOut"
+      },
+      "ReportReason": {
+        "type": "string",
+        "enum": [
+          "wrong_sign",
+          "cut_start",
+          "cut_end",
+          "quality",
+          "other"
+        ],
+        "title": "ReportReason"
       },
       "ResultIn": {
         "properties": {

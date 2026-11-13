@@ -6,6 +6,7 @@ import { ArrowLeft, ChevronDown, Film, LoaderCircle, Pause, Play, Search, Snail,
 import { useEffect, useRef, useState } from "react";
 
 import { ErrorView, PageTitle, Spinner } from "@/components/common";
+import { ReportClipButton } from "@/components/ReportClip";
 import { SignVideo } from "@/components/Video";
 import { Button } from "@/components/ui/button";
 import { Badge, Card } from "@/components/ui/card";
@@ -490,6 +491,11 @@ export function WordPage({ wordId }: { wordId: number }) {
         </Card>
       ) : (
         <p className="text-muted-foreground">{t.dictionary.noVideo}</p>
+      )}
+      {clip && (
+        <div className="mt-2 flex justify-end">
+          <ReportClipButton key={clip.id} clipId={clip.id} className="text-muted-foreground" />
+        </div>
       )}
       {w.clips.length > 1 && (
         <div className="mt-3 flex flex-wrap gap-2" role="group" aria-label={t.dictionary.clips(w.clips.length)}>

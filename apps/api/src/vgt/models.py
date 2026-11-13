@@ -41,6 +41,14 @@ class JobKind(PyEnum):  # not StrEnum: a member named 'split' would shadow str.s
     split = "split"
 
 
+class ReportReason(StrEnum):
+    wrong_sign = "wrong_sign"  # the video shows another sign than the word
+    cut_start = "cut_start"  # the start is cut off, or starts too early
+    cut_end = "cut_end"  # the end is cut off, or ends too late
+    quality = "quality"  # blurry, dark, no picture
+    other = "other"
+
+
 class JobStatus(StrEnum):
     queued = "queued"
     running = "running"
@@ -269,6 +277,29 @@ class AuthSession(Base):
     expires_at: Mapped[datetime]
 
     user: Mapped[User] = relationship()
+
+
+class ClipReport(Base):
+    """A problem with a clip, reported by a student or teacher, for the teachers to fix."""
+
+    __tablename__ = "clip_reports"
+    __table_args__ = (Index("ix_clip_reports_org_resolved", "org_id", "resolved_at"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    org_id: Mapped[int] = mapped_column(ForeignKey("organisations.id", ondelete="CASCADE"))
+    word_id: Mapped[int] = mapped_column(ForeignKey("words.id", ondelete="CASCADE"), index=True)
+    clip_id: Mapped[int | None] = mapped_column(ForeignKey("clips.id", ondelete="SET NULL"))
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    reason: Mapped[ReportReason] = mapped_column(_enum(ReportReason))
+    comment: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(default=utcnow)
+    resolved_at: Mapped[datetime | None]
+    resolved_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+
+    word: Mapped[Word] = relationship()
+    clip: Mapped[Clip | None] = relationship()
+    user: Mapped[User | None] = relationship(foreign_keys=[user_id])
+    resolver: Mapped[User | None] = relationship(foreign_keys=[resolved_by])
 
 
 class Job(Base):

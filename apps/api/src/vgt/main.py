@@ -18,6 +18,7 @@ from vgt.routers import (
     me,
     media,
     recordings,
+    reports,
     words,
 )
 from vgt.schemas import HealthOut
@@ -37,6 +38,7 @@ def build_api() -> APIRouter:
         media,
         admin_words,
         recordings,
+        reports,
         admin_groups,
         admin_users,
         admin_orgs,
