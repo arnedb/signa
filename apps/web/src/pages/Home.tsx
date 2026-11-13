@@ -11,7 +11,7 @@ import { Select } from "@/components/ui/input";
 import { catalogQuery, difficultQuery, meQuery } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
-type Scope = "year" | "lesson" | "list";
+type Scope = "year" | "lesson";
 
 function Segmented<T extends string>({
   label,
@@ -63,21 +63,16 @@ export function HomePage() {
     yearChoice ?? (years.some((y) => y.year === groupYear) ? groupYear : years[0]?.year) ?? null;
   const yearData = years.find((y) => y.year === year);
 
-  const [scope, setScope] = useState<Scope>("list");
+  const [scope, setScope] = useState<Scope>("lesson");
   const [lesson, setLesson] = useState<number | null>(null);
-  const [list, setList] = useState<string | null>(null);
-  const [direction, setDirection] = useState<DirectionChoice>("s2w");
+  const [direction, setDirection] = useState<DirectionChoice>("mixed");
   const [shuffle, setShuffle] = useState(true);
 
-  const lists = yearData?.lists.filter((l) => l.list_number) ?? [];
   const lessonValue = lesson ?? yearData?.lessons[0] ?? null;
-  const listValue = list ?? lists[0]?.list_number ?? null;
   const count =
     scope === "year"
       ? (yearData?.count ?? 0)
-      : scope === "lesson"
-        ? (yearData?.lists.filter((l) => l.lesson === lessonValue).reduce((a, l) => a + l.count, 0) ?? 0)
-        : (lists.find((l) => l.list_number === listValue)?.count ?? 0);
+      : (yearData?.lists.filter((l) => l.lesson === lessonValue).reduce((a, l) => a + l.count, 0) ?? 0);
 
   const start = () => {
     if (year == null) return;
@@ -86,7 +81,6 @@ export function HomePage() {
       search: {
         year,
         ...(scope === "lesson" && lessonValue != null ? { lesson: lessonValue } : {}),
-        ...(scope === "list" && listValue ? { list: listValue } : {}),
         direction,
         shuffle,
       },
@@ -117,7 +111,6 @@ export function HomePage() {
                   onChange={(v) => {
                     setYear(Number(v));
                     setLesson(null);
-                    setList(null);
                   }}
                 />
               )}
@@ -125,7 +118,6 @@ export function HomePage() {
                 label={t.practice.what}
                 value={scope}
                 options={[
-                  { value: "list", label: t.practice.byList },
                   { value: "lesson", label: t.practice.byLesson },
                   { value: "year", label: t.practice.wholeYear },
                 ]}
@@ -138,19 +130,6 @@ export function HomePage() {
                       {yearData?.lessons.map((l) => (
                         <option key={l} value={l}>
                           {t.app.lesson(l)}
-                        </option>
-                      ))}
-                    </Select>
-                  )}
-                </Field>
-              )}
-              {scope === "list" && (
-                <Field label={t.practice.list}>
-                  {(p) => (
-                    <Select {...p} value={listValue ?? ""} onChange={(e) => setList(e.target.value)}>
-                      {lists.map((l) => (
-                        <option key={l.list_number} value={l.list_number ?? ""}>
-                          {t.app.list(l.list_number ?? "")} · {t.app.words(l.count)}
                         </option>
                       ))}
                     </Select>

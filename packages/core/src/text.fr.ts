@@ -99,7 +99,6 @@ export const fr: Text = {
     what: "Quoi",
     wholeYear: "Toute l’année",
     byLesson: "Par leçon",
-    byList: "Par liste",
     lesson: "Leçon",
     list: "Liste",
     direction: "Sens",

@@ -101,7 +101,6 @@ export const nl = {
     what: "Wat",
     wholeYear: "Heel het jaar",
     byLesson: "Per les",
-    byList: "Per lijst",
     lesson: "Les",
     list: "Lijst",
     direction: "Richting",
