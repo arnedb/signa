@@ -63,6 +63,9 @@ containers, volumes and Traefik routers and can share one server.
 
 ## One-time setup
 
+First time on PRO? Follow [FIRST-PRO-DEPLOY.md](FIRST-PRO-DEPLOY.md): it walks through this
+setup, the first release, the legacy import, the first admin and backups in order.
+
 ### Server
 
 For each environment (or once, if both are on the same server):
