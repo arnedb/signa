@@ -39,6 +39,12 @@ export const catalogQuery = queryOptions({
   queryFn: () => unwrap(api.GET("/api/v1/catalog")),
 });
 
+/** Every list of the school, drafts and every group's included, for the admin pages. */
+export const adminCatalogQuery = queryOptions({
+  queryKey: ["catalog", "admin"],
+  queryFn: () => unwrap(api.GET("/api/v1/admin/catalog")),
+});
+
 export interface WordFilter {
   year?: number;
   lesson?: number;

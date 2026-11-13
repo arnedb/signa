@@ -269,7 +269,7 @@ export interface paths {
         };
         /**
          * Difficult Words
-         * @description Published words of the current school whose most recent answer was wrong.
+         * @description Published words of the current school and group whose most recent answer was wrong.
          *
          *     Each direction counts on its own: a word is difficult in a direction when the latest
          *     answer in that direction was wrong. `directions` lists those directions.
@@ -292,7 +292,10 @@ export interface paths {
         };
         /**
          * List Words
-         * @description Published words of the current school, in course order.
+         * @description Published words of the current school and group, in course order.
+         *
+         *     The group's own words replace shared words with the same gloss on the same list (see
+         *     ``visible_to``).
          *
          *     ``with_clip`` keeps only words that have a clip. ``limit`` and ``offset`` page through
          *     the result; without ``limit`` every matching word is returned.
@@ -332,7 +335,8 @@ export interface paths {
         };
         /**
          * Catalog
-         * @description Years, lessons and lists of the current school that have published words, with counts.
+         * @description Years, lessons and lists with published words for the current school and group, with
+         *     counts.
          */
         get: operations["catalog"];
         put?: never;
@@ -401,11 +405,35 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List Words */
+        /**
+         * List Words
+         * @description All words of the school. ``group_id`` keeps the words that group practises from: the
+         *     shared words and its own (shared words it replaces included, so both can be compared).
+         */
         get: operations["admin_list_words"];
         put?: never;
         /** Create Word */
         post: operations["admin_create_word"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/catalog": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Admin Catalog
+         * @description Years, lessons and lists of every word of the school (drafts and every group's).
+         */
+        get: operations["admin_admin_catalog"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1152,6 +1180,8 @@ export interface components {
             position: number;
             /** Notes */
             notes: string;
+            /** Group Ids */
+            group_ids: number[];
             /** Clips */
             clips: components["schemas"]["ClipOut"][];
             status: components["schemas"]["WordStatus"];
@@ -1268,6 +1298,8 @@ export interface components {
             position: number;
             /** Notes */
             notes: string;
+            /** Group Ids */
+            group_ids: number[];
             /** Clips */
             clips: components["schemas"]["ClipOut"][];
             /** Directions */
@@ -1658,6 +1690,8 @@ export interface components {
              * @default false
              */
             publish?: boolean;
+            /** Group Ids */
+            group_ids?: number[];
         };
         /**
          * RecordingItem
@@ -1882,6 +1916,8 @@ export interface components {
             /** List Number */
             list_number?: string | null;
             status?: components["schemas"]["WordStatus"] | null;
+            /** Group Ids */
+            group_ids?: number[] | null;
         };
         /** WordBulkUpdate */
         WordBulkUpdate: {
@@ -1911,6 +1947,8 @@ export interface components {
             notes?: string;
             /** @default draft */
             status?: components["schemas"]["WordStatus"];
+            /** Group Ids */
+            group_ids?: number[];
         };
         /** WordEventOut */
         WordEventOut: {
@@ -1954,6 +1992,8 @@ export interface components {
             position: number;
             /** Notes */
             notes: string;
+            /** Group Ids */
+            group_ids: number[];
             /** Clips */
             clips: components["schemas"]["ClipOut"][];
         };
@@ -1977,6 +2017,8 @@ export interface components {
             /** Notes */
             notes?: string | null;
             status?: components["schemas"]["WordStatus"] | null;
+            /** Group Ids */
+            group_ids?: number[] | null;
         };
     };
     responses: never;
@@ -2609,6 +2651,7 @@ export interface operations {
                 q?: string | null;
                 status?: components["schemas"]["WordStatus"] | null;
                 missing_clip?: boolean;
+                group_id?: number | null;
             };
             header?: never;
             path?: never;
@@ -2665,6 +2708,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    admin_admin_catalog: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Catalog"];
                 };
             };
         };

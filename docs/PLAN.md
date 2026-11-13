@@ -70,6 +70,7 @@ groups       id, org_id, year, weekday, label, invite_code, active
 memberships  user_id, group_id          -- any number, in any of the user's schools
 words        id, org_id, gloss, year, lesson, list_number, position, notes,
              status (draft | published), legacy_id, created_by, updated_by, timestamps
+word_groups  word_id, group_id          -- none: the word is for every group of its school
 clips        id, word_id, file, duration, thumb, source (legacy | recording | demo),
              recorded_at, is_primary, archived, created_at, updated_at
 word_events  id, word_id, user_id, action, diff_json, undone, at   -- audit log for words
@@ -117,6 +118,14 @@ jobs         id, org_id, kind (transcode | split), status (queued | running | do
 - Words and clips are separate. A new recording becomes the primary clip and the old one
   is archived, so nothing is lost and a replacement can be undone.
 - `(year, list_number)` identifies a list, because year 2 reuses numbers like "1.1".
+- **Lists per group.** A word is for every group of its school, unless it is limited to some
+  groups (`word_groups`). A group practises the shared words and its own. A published word for
+  a group replaces, for that group, the shared word with the same gloss on the same list. So
+  groups can have a list with the same number but another video for a word (a variant of
+  that word for the group) or another set of words (words for one group only). Students only
+  see their current group's words: in practice, the dictionary, the catalog and their
+  difficult words. Without a group, only the shared words. Teachers see every word in the
+  admin, and can filter on a group.
 - Progress is a plain log of results. "Mijn moeilijke woorden" means the words whose last
   answer was wrong.
 - Privacy: no email and no real name. A username, a password and a one-time recovery code.
@@ -138,7 +147,8 @@ jobs         id, org_id, kind (transcode | split), status (queued | running | do
 
 ### Teachers (`/admin`)
 
-- **Words:** edit, draft and publish, history with undo, several clips per word.
+- **Words:** edit, draft and publish, history with undo, several clips per word. Limit words
+  to groups, one by one or a whole selection at once (“Groepen”); the change is in the history.
 - **Trim a clip:** cut the start and/or end off a clip, with draggable start and end handles,
   frame steps and keyboard shortcuts (I/O, ←/→, Space). The shortened copy takes the clip's
   place and the original is archived, so a trim can be undone from the history.
@@ -155,6 +165,8 @@ jobs         id, org_id, kind (transcode | split), status (queued | running | do
      new clip side by side, or make it a new word on the chosen year and list. New words are
      drafts unless "publish now" is ticked. A name that is already on that list is refused (choose
      the existing word instead); the same name on another list becomes an extra word.
+     When the recording is for some groups, new words are for those groups only, and a name
+     matches the word those groups have: a shared word gets a group variant with the new clip.
   5. For existing words, choose whether the new clip replaces the old one or is added as an
      extra clip.
 

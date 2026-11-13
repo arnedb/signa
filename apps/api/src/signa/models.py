@@ -178,6 +178,24 @@ class Membership(Base):
     group: Mapped[Group] = relationship(back_populates="memberships")
 
 
+class WordGroup(Base):
+    """Limits a word to some groups. A word without rows here is for every group of its school.
+
+    A group-specific word replaces a shared word with the same gloss on the same list (same
+    year and list number), for that group only: that is how a group gets another video, or
+    another set of words, for a list with the same number.
+    """
+
+    __tablename__ = "word_groups"
+
+    word_id: Mapped[int] = mapped_column(
+        ForeignKey("words.id", ondelete="CASCADE"), primary_key=True
+    )
+    group_id: Mapped[int] = mapped_column(
+        ForeignKey("groups.id", ondelete="CASCADE"), primary_key=True, index=True
+    )
+
+
 class Word(Base):
     __tablename__ = "words"
     __table_args__ = (Index("ix_words_org_year_list", "org_id", "year", "list_number"),)
@@ -200,6 +218,14 @@ class Word(Base):
     clips: Mapped[list["Clip"]] = relationship(
         back_populates="word", order_by="Clip.id", cascade="all, delete-orphan"
     )
+    # Empty: the word is for every group of the school.
+    groups: Mapped[list[Group]] = relationship(
+        secondary="word_groups", order_by="Group.id", passive_deletes=True
+    )
+
+    @property
+    def group_ids(self) -> list[int]:
+        return sorted(g.id for g in self.groups)
 
     @property
     def primary_clip(self) -> "Clip | None":

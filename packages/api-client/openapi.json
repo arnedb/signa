@@ -513,7 +513,7 @@
           "me"
         ],
         "summary": "Difficult Words",
-        "description": "Published words of the current school whose most recent answer was wrong.\n\nEach direction counts on its own: a word is difficult in a direction when the latest\nanswer in that direction was wrong. `directions` lists those directions.",
+        "description": "Published words of the current school and group whose most recent answer was wrong.\n\nEach direction counts on its own: a word is difficult in a direction when the latest\nanswer in that direction was wrong. `directions` lists those directions.",
         "operationId": "difficult_words",
         "responses": {
           "200": {
@@ -539,7 +539,7 @@
           "words"
         ],
         "summary": "List Words",
-        "description": "Published words of the current school, in course order.\n\n``with_clip`` keeps only words that have a clip. ``limit`` and ``offset`` page through\nthe result; without ``limit`` every matching word is returned.",
+        "description": "Published words of the current school and group, in course order.\n\nThe group's own words replace shared words with the same gloss on the same list (see\n``visible_to``).\n\n``with_clip`` keeps only words that have a clip. ``limit`` and ``offset`` page through\nthe result; without ``limit`` every matching word is returned.",
         "operationId": "list_words",
         "parameters": [
           {
@@ -741,7 +741,7 @@
           "words"
         ],
         "summary": "Catalog",
-        "description": "Years, lessons and lists of the current school that have published words, with counts.",
+        "description": "Years, lessons and lists with published words for the current school and group, with\ncounts.",
         "operationId": "catalog",
         "responses": {
           "200": {
@@ -868,6 +868,7 @@
           "admin: words"
         ],
         "summary": "List Words",
+        "description": "All words of the school. ``group_id`` keeps the words that group practises from: the\nshared words and its own (shared words it replaces included, so both can be compared).",
         "operationId": "admin_list_words",
         "parameters": [
           {
@@ -959,6 +960,22 @@
               "default": false,
               "title": "Missing Clip"
             }
+          },
+          {
+            "name": "group_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Group Id"
+            }
           }
         ],
         "responses": {
@@ -1021,6 +1038,28 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/catalog": {
+      "get": {
+        "tags": [
+          "admin: words"
+        ],
+        "summary": "Admin Catalog",
+        "description": "Years, lessons and lists of every word of the school (drafts and every group's).",
+        "operationId": "admin_admin_catalog",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Catalog"
                 }
               }
             }
@@ -3060,6 +3099,13 @@
             "type": "string",
             "title": "Notes"
           },
+          "group_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Group Ids"
+          },
           "clips": {
             "items": {
               "$ref": "#/components/schemas/ClipOut"
@@ -3101,6 +3147,7 @@
           "list_number",
           "position",
           "notes",
+          "group_ids",
           "clips",
           "status",
           "legacy_id",
@@ -3386,6 +3433,13 @@
             "type": "string",
             "title": "Notes"
           },
+          "group_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Group Ids"
+          },
           "clips": {
             "items": {
               "$ref": "#/components/schemas/ClipOut"
@@ -3410,6 +3464,7 @@
           "list_number",
           "position",
           "notes",
+          "group_ids",
           "clips",
           "directions"
         ],
@@ -4516,6 +4571,14 @@
             "type": "boolean",
             "title": "Publish",
             "default": false
+          },
+          "group_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "maxItems": 100,
+            "title": "Group Ids"
           }
         },
         "type": "object",
@@ -5155,6 +5218,21 @@
                 "type": "null"
               }
             ]
+          },
+          "group_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array",
+                "maxItems": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Group Ids"
           }
         },
         "type": "object",
@@ -5228,6 +5306,14 @@
           "status": {
             "$ref": "#/components/schemas/WordStatus",
             "default": "draft"
+          },
+          "group_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "maxItems": 100,
+            "title": "Group Ids"
           }
         },
         "type": "object",
@@ -5351,6 +5437,13 @@
             "type": "string",
             "title": "Notes"
           },
+          "group_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Group Ids"
+          },
           "clips": {
             "items": {
               "$ref": "#/components/schemas/ClipOut"
@@ -5368,6 +5461,7 @@
           "list_number",
           "position",
           "notes",
+          "group_ids",
           "clips"
         ],
         "title": "WordOut"
@@ -5464,6 +5558,21 @@
                 "type": "null"
               }
             ]
+          },
+          "group_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array",
+                "maxItems": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Group Ids"
           }
         },
         "type": "object",

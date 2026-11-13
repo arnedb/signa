@@ -6,6 +6,7 @@ import { Archive, ArchiveRestore, ArrowLeft, Scissors, Star, Trash2, Undo2, Uplo
 import { useEffect, useState } from "react";
 
 import { ErrorView, Field, Spinner } from "@/components/common";
+import { GroupPicker, groupNames, useGroups } from "@/components/GroupPicker";
 import { SignVideo } from "@/components/Video";
 import { Button } from "@/components/ui/button";
 import { Alert, Badge, Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,6 +18,8 @@ import { formatDate, formatSeconds } from "@/lib/utils";
 import { Trimmer } from "@/pages/admin/Trim";
 import { OrphanReports, ReportCard, reportsQuery } from "@/pages/admin/Reports";
 import { StatusBadge } from "@/pages/admin/Words";
+
+type Group = Schemas["GroupOut"];
 
 type WordEvent = Schemas["WordEventOut"];
 
@@ -111,6 +114,8 @@ function WordForm({ word }: { word: AdminWord }) {
     position: String(word.position),
     notes: word.notes,
   });
+  const [groupIds, setGroupIds] = useState<number[]>(word.group_ids);
+  const groups = useGroups();
   const set = (k: keyof typeof form) => (e: { target: { value: string } }) =>
     setForm((f) => ({ ...f, [k]: e.target.value }));
 
@@ -126,6 +131,7 @@ function WordForm({ word }: { word: AdminWord }) {
     list_number: form.list_number || null,
     position: Number(form.position) || 0,
     notes: form.notes,
+    group_ids: groupIds,
   });
 
   return (
@@ -163,6 +169,11 @@ function WordForm({ word }: { word: AdminWord }) {
           <Field label={t.admin.notes} className="sm:col-span-4">
             {(p) => <Textarea {...p} value={form.notes} onChange={set("notes")} />}
           </Field>
+          {(groups.length > 1 || groupIds.length > 0) && (
+            <div className="sm:col-span-4">
+              <GroupPicker value={groupIds} onChange={setGroupIds} />
+            </div>
+          )}
           <div className="flex items-center gap-3 sm:col-span-4">
             <Button type="submit" disabled={save.isPending}>
               {save.isPending ? t.app.saving : t.app.save}
@@ -313,12 +324,13 @@ function Clips({ word }: { word: AdminWord }) {
 
 const show = (v: unknown) => (v == null || v === "" ? "—" : String(v));
 
-function describe(e: WordEvent): string {
+function describe(e: WordEvent, groups: Group[]): string {
   const label = t.admin.actions[e.action] ?? e.action;
   if (e.action === "update") {
     const fields = Object.keys(e.diff_json)
       .map((f) => {
         const [from, to] = e.diff_json[f] as [unknown, unknown];
+        if (f === "group_ids") return `${t.admin.fields[f]}: ${groupNames(from, groups)} → ${groupNames(to, groups)}`;
         return `${t.admin.fields[f] ?? f}: ${show(from)} → ${show(to)}`;
       })
       .join("; ");
@@ -345,6 +357,7 @@ const UNDOABLE = new Set([
 
 function History({ wordId }: { wordId: number }) {
   const events = useQuery(eventsQuery(wordId));
+  const groups = useGroups();
   const updated = useWordUpdated(wordId);
   const undo = useMutation({
     mutationFn: (id: number) =>
@@ -366,7 +379,7 @@ function History({ wordId }: { wordId: number }) {
           <ol className="flex flex-col gap-3">
             {events.data.map((e) => (
               <li key={e.id} className="border-l-2 pl-3 text-sm">
-                <p className={e.undone ? "line-through opacity-60" : ""}>{describe(e)}</p>
+                <p className={e.undone ? "line-through opacity-60" : ""}>{describe(e, groups)}</p>
                 <p className="text-xs text-muted-foreground">
                   {formatDate(e.at, true)} · {t.admin.by(e.user?.username ?? t.admin.system)}
                   {e.undone && ` · ${t.admin.undone}`}

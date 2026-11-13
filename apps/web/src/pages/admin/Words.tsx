@@ -2,15 +2,16 @@ import type { AdminWord, Schemas } from "@signa/api-client";
 import { t } from "@signa/core";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { ArrowRightLeft, Check, Film, Plus, Search, Trash2, Undo2, X } from "lucide-react";
+import { ArrowRightLeft, Check, Film, Plus, Search, Trash2, Undo2, Users, X } from "lucide-react";
 import { useDeferredValue, useEffect, useRef, useState } from "react";
 
 import { ErrorView, Field, PageTitle, Spinner } from "@/components/common";
+import { GroupPicker, useGroups, WordGroups } from "@/components/GroupPicker";
 import { Button } from "@/components/ui/button";
 import { Alert, Badge } from "@/components/ui/card";
 import { Dialog } from "@/components/ui/dialog";
 import { Input, Select } from "@/components/ui/input";
-import { api, catalogQuery, errorMessage, unwrap } from "@/lib/api";
+import { adminCatalogQuery, api, errorMessage, unwrap } from "@/lib/api";
 import { useLessonField } from "@/lib/lesson";
 import { formatDate } from "@/lib/utils";
 
@@ -20,6 +21,7 @@ export interface AdminWordsSearch {
   list?: string;
   status?: "draft" | "published";
   missing?: boolean;
+  group?: number;
 }
 
 export function validateAdminWordsSearch(s: Record<string, unknown>): AdminWordsSearch {
@@ -29,6 +31,7 @@ export function validateAdminWordsSearch(s: Record<string, unknown>): AdminWords
     list: s.list != null && s.list !== "" ? String(s.list) : undefined,
     status: s.status === "draft" || s.status === "published" ? s.status : undefined,
     missing: s.missing === true || s.missing === "true" || undefined,
+    group: s.group != null && s.group !== "" ? Number(s.group) : undefined,
   };
 }
 
@@ -38,7 +41,14 @@ export const adminWordsQuery = (f: AdminWordsSearch) => ({
     unwrap(
       api.GET("/api/v1/admin/words", {
         params: {
-          query: { q: f.q, year: f.year, list_number: f.list, status: f.status, missing_clip: f.missing },
+          query: {
+            q: f.q,
+            year: f.year,
+            list_number: f.list,
+            status: f.status,
+            missing_clip: f.missing,
+            group_id: f.group,
+          },
         },
       }),
     ),
@@ -52,7 +62,8 @@ export function AdminWordsPage({ search }: { search: AdminWordsSearch }) {
   const navigate = useNavigate();
   const [q, setQ] = useState(search.q ?? "");
   const deferredQ = useDeferredValue(q.trim() || undefined);
-  const catalog = useQuery(catalogQuery);
+  const catalog = useQuery(adminCatalogQuery);
+  const groups = useGroups();
   const words = useQuery({ ...adminWordsQuery({ ...search, q: deferredQ }), placeholderData: keepPreviousData });
   const [creating, setCreating] = useState(false);
 
@@ -63,6 +74,7 @@ export function AdminWordsPage({ search }: { search: AdminWordsSearch }) {
   const qc = useQueryClient();
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [moving, setMoving] = useState(false);
+  const [grouping, setGrouping] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const lastClicked = useRef<number | null>(null);
   const filterKey = JSON.stringify({ ...search, q: deferredQ });
@@ -95,6 +107,7 @@ export function AdminWordsPage({ search }: { search: AdminWordsSearch }) {
     setMessage(text);
     setSelected(new Set());
     setMoving(false);
+    setGrouping(false);
     void qc.invalidateQueries({ queryKey: ["admin", "words"] });
     void qc.invalidateQueries({ queryKey: ["catalog"] });
     void qc.invalidateQueries({ queryKey: ["words"] });
@@ -176,6 +189,21 @@ export function AdminWordsPage({ search }: { search: AdminWordsSearch }) {
           <option value="published">{t.admin.statuses.published}</option>
           <option value="draft">{t.admin.statuses.draft}</option>
         </Select>
+        {groups.length > 1 && (
+          <Select
+            aria-label={t.admin.wordGroups}
+            className="w-48"
+            value={search.group ?? ""}
+            onChange={(e) => set({ group: e.target.value ? Number(e.target.value) : undefined })}
+          >
+            <option value="">{t.admin.allGroups}</option>
+            {groups.map((g) => (
+              <option key={g.id} value={g.id}>
+                {g.active ? g.label : t.admin.inactiveGroup(g.label)}
+              </option>
+            ))}
+          </Select>
+        )}
         <label className="flex items-center gap-2 px-2 text-sm">
           <input type="checkbox" checked={!!search.missing} onChange={(e) => set({ missing: e.target.checked || undefined })} />
           {t.admin.missingClip}
@@ -221,6 +249,7 @@ export function AdminWordsPage({ search }: { search: AdminWordsSearch }) {
                 <th className="px-3 py-2 font-medium">{t.practice.year}</th>
                 <th className="px-3 py-2 font-medium">{t.practice.lesson}</th>
                 <th className="px-3 py-2 font-medium">{t.practice.list}</th>
+                {groups.length > 1 && <th className="px-3 py-2 font-medium">{t.admin.wordGroups}</th>}
                 <th className="px-3 py-2 font-medium">{t.admin.clips}</th>
                 <th className="px-3 py-2 font-medium">{t.admin.status}</th>
                 <th className="hidden px-3 py-2 font-medium md:table-cell">{t.admin.history}</th>
@@ -260,6 +289,11 @@ export function AdminWordsPage({ search }: { search: AdminWordsSearch }) {
                     <td className="px-3 py-2">{w.year}</td>
                     <td className="px-3 py-2">{w.lesson ?? "—"}</td>
                     <td className="px-3 py-2">{w.list_number ?? "—"}</td>
+                    {groups.length > 1 && (
+                      <td className="px-3 py-2">
+                        <WordGroups ids={w.group_ids} groups={groups} />
+                      </td>
+                    )}
                     <td className="px-3 py-2">
                       {live.length === 0 ? (
                         <Badge tone="destructive">{t.admin.missingClip}</Badge>
@@ -303,6 +337,11 @@ export function AdminWordsPage({ search }: { search: AdminWordsSearch }) {
             <Button size="sm" variant="outline" disabled={bulk.isPending} onClick={() => setMoving(true)}>
               <ArrowRightLeft aria-hidden /> {t.admin.moveWords}
             </Button>
+            {groups.length > 1 && (
+              <Button size="sm" variant="outline" disabled={bulk.isPending} onClick={() => setGrouping(true)}>
+                <Users aria-hidden /> {t.admin.setGroups}
+              </Button>
+            )}
             <Button
               size="sm"
               variant="ghost"
@@ -326,6 +365,15 @@ export function AdminWordsPage({ search }: { search: AdminWordsSearch }) {
         count={chosen.length}
         pending={bulk.isPending}
         onMove={(changes) => bulk.mutate(changes)}
+      />
+      <GroupsDialog
+        open={grouping}
+        onOpenChange={setGrouping}
+        count={chosen.length}
+        // Start from the groups the selected words share, so assigning a list is one click.
+        initial={commonGroups(chosen)}
+        pending={bulk.isPending}
+        onSave={(group_ids) => bulk.mutate({ group_ids })}
       />
       <NewWordDialog open={creating} onOpenChange={setCreating} defaults={search} />
     </div>
@@ -427,6 +475,52 @@ function MoveWordsDialog({
   );
 }
 
+/** The groups every one of these words is for (none when they differ). */
+function commonGroups(words: AdminWord[]): number[] {
+  const [first, ...rest] = words;
+  if (!first) return [];
+  const key = first.group_ids.join(",");
+  return rest.every((w) => w.group_ids.join(",") === key) ? first.group_ids : [];
+}
+
+function GroupsDialog({
+  open,
+  onOpenChange,
+  count,
+  initial,
+  pending,
+  onSave,
+}: {
+  open: boolean;
+  onOpenChange: (o: boolean) => void;
+  count: number;
+  initial: number[];
+  pending: boolean;
+  onSave: (groupIds: number[]) => void;
+}) {
+  const [ids, setIds] = useState<number[]>([]);
+  const initialKey = initial.join(",");
+  useEffect(() => {
+    if (open) setIds(initialKey ? initialKey.split(",").map(Number) : []);
+  }, [open, initialKey]);
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange} title={t.admin.setGroupsTitle(count)}>
+      <form
+        className="flex flex-col gap-4"
+        onSubmit={(e) => {
+          e.preventDefault();
+          onSave(ids);
+        }}
+      >
+        <GroupPicker value={ids} onChange={setIds} />
+        <Button type="submit" disabled={pending}>
+          <Users aria-hidden /> {t.app.save}
+        </Button>
+      </form>
+    </Dialog>
+  );
+}
+
 function NewWordDialog({
   open,
   onOpenChange,
@@ -440,7 +534,13 @@ function NewWordDialog({
   const [gloss, setGloss] = useState("");
   const [year, setYear] = useState(String(defaults.year ?? 1));
   const [list, setList] = useState(defaults.list ?? "");
+  const [groupIds, setGroupIds] = useState<number[]>(defaults.group ? [defaults.group] : []);
+  const groups = useGroups();
   const lesson = useLessonField(list);
+  // A new word is for the group the list is filtered on.
+  useEffect(() => {
+    if (open) setGroupIds(defaults.group ? [defaults.group] : []);
+  }, [open, defaults.group]);
   const create = useMutation({
     mutationFn: () =>
       unwrap(
@@ -450,6 +550,7 @@ function NewWordDialog({
             year: Number(year),
             lesson: lesson.number ?? 0,
             list_number: list.trim() || null,
+            group_ids: groupIds,
           },
         }),
       ),
@@ -479,6 +580,7 @@ function NewWordDialog({
             {(p) => <Input {...p} placeholder="x.y" value={list} onChange={(e) => setList(e.target.value)} />}
           </Field>
         </div>
+        {groups.length > 1 && <GroupPicker value={groupIds} onChange={setGroupIds} />}
         <Button type="submit" disabled={create.isPending}>{t.admin.newWord}</Button>
       </form>
     </Dialog>
