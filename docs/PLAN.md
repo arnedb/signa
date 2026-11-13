@@ -222,7 +222,7 @@ label and trim videos. Its features now live in `/admin`:
 | 4 | Practice (`packages/core` + web UI), results, "Mijn moeilijke woorden" | Done |
 | 5 | Admin: word editing, audit log with undo, single clip upload, group management including moving students | Done |
 | 6 | Admin: recording sessions (jobs, auto-split, matching to words, replacing clips), plus the old labelling tool: rest-based split, timeline, new words from a recording, trimming clips | Done in code. The new year 1 videos come in after launch. Tune the split on a real class video (`VGT_SPLIT_REST_PERCENTILE`) |
-| 7 | Launch on `vgt.arnedb.be` (PRO): legacy import into PRO, first admin, first release, daily backup cron on the server, announce to the groups | To do. Deploy with backup and rollback is already in place |
+| 7 | Launch on `signa.arnedb.be` (PRO): legacy import into PRO, first admin, first release, daily backup cron on the server, announce to the groups | To do. Deploy with backup and rollback is already in place |
 | 8 | Portfolio: demo videos as the `demo-media-v1` release asset, public demo, screenshots in the README (the architecture diagram is there), `docs/case-study.md`, accessibility and Lighthouse pass | To do |
 | 9 | Mobile (later): Expo app with login, practice and browse, offline clip caching. Publish via EAS to TestFlight and Play internal testing first | To do. API, auth, client and `packages/core` are ready for it (see `apps/mobile/README.md`) |
 

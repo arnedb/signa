@@ -15,6 +15,10 @@ cd "$(dirname "$0")"
 env_file=".env.$env"
 [ -f "$env_file" ] || { echo "missing $env_file (see env.$env.example)" >&2; exit 1; }
 compose=(docker compose -p "vgt-$env" --env-file "$env_file" -f compose.yaml)
+# Redirect the old host to the new one while VGT_OLD_HOST is set (see compose.redirect.yaml).
+if grep -q '^VGT_OLD_HOST=.' "$env_file" && [ -f compose.redirect.yaml ]; then
+  compose+=(-f compose.redirect.yaml)
+fi
 
 previous="$(sed -n 's/^VGT_IMAGE=//p' "$env_file")"
 set_image() { sed -i "s|^VGT_IMAGE=.*|VGT_IMAGE=$1|" "$env_file"; }

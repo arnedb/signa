@@ -24,7 +24,7 @@ export class ApiError extends Error {
 }
 
 export interface ClientOptions {
-  /** API origin, e.g. "https://vgt.arnedb.be". Empty for same-origin (web). */
+  /** API origin, e.g. "https://signa.arnedb.be". Empty for same-origin (web). */
   baseUrl?: string;
   /** Mobile: returns the session token, sent as a Bearer header. Web uses the cookie. */
   getToken?: () => string | null | Promise<string | null>;

@@ -1,0 +1,14 @@
+# Optional: send the old host (VGT_OLD_HOST) to the new one (VGT_HOST) with a permanent redirect
+# that keeps the path, e.g. https://vgt.arnedb.be/join/abc -> https://signa.arnedb.be/join/abc.
+# deploy/deploy.sh adds this file when VGT_OLD_HOST is set in the env file.
+services:
+  vgt:
+    labels:
+      - traefik.http.routers.vgt-${VGT_ENVIRONMENT}-old.rule=Host(`${VGT_OLD_HOST:?set VGT_OLD_HOST}`)
+      - traefik.http.routers.vgt-${VGT_ENVIRONMENT}-old.entrypoints=${TRAEFIK_ENTRYPOINT:-websecure}
+      - traefik.http.routers.vgt-${VGT_ENVIRONMENT}-old.tls.certresolver=${TRAEFIK_CERTRESOLVER:-letsencrypt}
+      - traefik.http.routers.vgt-${VGT_ENVIRONMENT}-old.middlewares=vgt-${VGT_ENVIRONMENT}-old
+      - traefik.http.routers.vgt-${VGT_ENVIRONMENT}-old.service=vgt-${VGT_ENVIRONMENT}
+      - traefik.http.middlewares.vgt-${VGT_ENVIRONMENT}-old.redirectregex.regex=^https?://[^/]+/?(.*)
+      - traefik.http.middlewares.vgt-${VGT_ENVIRONMENT}-old.redirectregex.replacement=https://${VGT_HOST}/$${1}
+      - traefik.http.middlewares.vgt-${VGT_ENVIRONMENT}-old.redirectregex.permanent=true

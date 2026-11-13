@@ -10,7 +10,7 @@ What is already in place for it:
 
   ```ts
   import { createApi } from "@vgt/api-client";
-  const api = createApi({ baseUrl: "https://vgt.arnedb.be", getToken: () => SecureStore.getItemAsync("token") });
+  const api = createApi({ baseUrl: "https://signa.arnedb.be", getToken: () => SecureStore.getItemAsync("token") });
   ```
 
 - **Practice logic**: `@vgt/core` (deck building, the session reducer, keyboard map and all
