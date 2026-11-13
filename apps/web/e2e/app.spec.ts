@@ -104,15 +104,16 @@ test("a student joins a second school with the same account and switches between
   await page.getByLabel("Herhaal wachtwoord").fill("geheim-wachtwoord");
   await page.getByRole("button", { name: "Account maken" }).click();
   await page.getByRole("button", { name: "Ik heb de code bewaard" }).click();
-  await expect(page.getByLabel("School en groep")).toHaveCount(0);
+  // With one school and one group there is nothing to switch.
+  await expect(page.getByRole("link", { name: /Wissel van school/ })).toHaveCount(0);
 
   await page.goto("/join/demo-2");
   await expect(page.getByText(`Je bent aangemeld als ${name}.`)).toBeVisible();
   await expect(page.getByText("Tweede school · Vlaamse Gebarentaal")).toBeVisible();
   await page.getByRole("button", { name: "Lid worden met deze account" }).click();
   await expect(page.getByRole("heading", { name: "Oefenen" })).toBeVisible();
-  const switcher = page.getByLabel("School en groep");
-  await expect(switcher.locator("option:checked")).toHaveText("Tweede school · Jaar 1 · zaterdag");
+  const switcher = page.getByRole("link", { name: "Wissel van school: Tweede school" });
+  await expect(switcher).toBeVisible();
 
   // Each school has its own words.
   await page.goto("/dictionary");
@@ -121,11 +122,23 @@ test("a student joins a second school with the same account and switches between
   await page.getByLabel("Zoek een woord").fill("huis");
   await expect(page.getByText("Geen woorden gevonden.")).toBeVisible();
 
-  await switcher.selectOption({ label: "Demoschool · Jaar 1 · dinsdag" });
+  await switcher.click();
+  await expect(page.getByRole("heading", { name: "Kies je school" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Tweede school · Jaar 1 · zaterdag" })).toHaveAttribute(
+    "aria-current",
+    "true",
+  );
+  await page.getByRole("button", { name: "Demoschool · Jaar 1 · dinsdag" }).click();
   await expect(page.getByRole("heading", { name: "Oefenen" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Wissel van school: Demoschool" })).toBeVisible();
   await page.goto("/dictionary");
   await page.getByLabel("Zoek een woord").fill("huis");
   await expect(page.getByText("1 woord")).toBeVisible();
+
+  // The last school chosen is chosen again after logging in.
+  await page.getByRole("button", { name: "Afmelden" }).click();
+  await login(page, name, "geheim-wachtwoord");
+  await expect(page.getByRole("link", { name: "Wissel van school: Demoschool" })).toBeVisible();
 });
 
 test("a superadmin creates a school with its first admin", async ({ page }, info) => {

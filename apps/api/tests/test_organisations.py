@@ -3,13 +3,13 @@
 from pathlib import Path
 
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, select, text
 from sqlalchemy.orm import Session
 
 from tests.conftest import PASSWORD, login, make_group, make_org, make_user
 from vgt import db as vgt_db
 from vgt.config import get_settings
-from vgt.models import Group, Membership, Organisation, OrgMember, Role, Word, WordStatus
+from vgt.models import Group, Membership, Organisation, OrgMember, Role, User, Word, WordStatus
 
 
 def _word(db: Session, org: Organisation, gloss: str) -> Word:
@@ -96,6 +96,40 @@ def test_one_account_in_two_schools(
     assert r.status_code == 403
     third = make_org(db, "third", "Third school")
     assert client.put("/api/v1/me/context", json={"org_id": third.id}).status_code == 403
+
+
+def test_last_used_school_is_chosen(
+    app_client: TestClient, db: Session, org: Organisation, group: Group
+) -> None:
+    second = make_org(db, "second", "Z school")
+    second_group = make_group(db, second, "second-group")
+    third = make_org(db, "third", "C school")
+    third_group = make_group(db, third, "third-group")
+    make_user(db, "anna", Role.student, group)
+    client = login(app_client, "anna")
+    client.post("/api/v1/me/join", json={"invite_code": "second-group"})
+    client.post("/api/v1/me/join", json={"invite_code": "third-group"})
+    _switch(client, second.id, second_group.id)
+    _switch(client, third.id, third_group.id)
+
+    # The school chosen last stays chosen after logging in again.
+    client.post("/api/v1/auth/logout")
+    client = login(app_client, "anna")
+    assert client.get("/api/v1/me").json()["org"]["id"] == third.id
+
+    # When it closes, the school used before it is chosen, not the first by name.
+    third.active = False
+    db.commit()
+    me = client.get("/api/v1/me").json()
+    assert me["org"]["id"] == second.id and me["group"]["id"] == second_group.id
+
+
+def test_only_school_is_always_chosen(student: TestClient, db: Session, org: Organisation) -> None:
+    user = db.scalars(select(User).where(User.username == "student1")).one()
+    user.current_org_id = None
+    user.current_group_id = None
+    db.commit()
+    assert student.get("/api/v1/me").json()["org"]["id"] == org.id
 
 
 def test_two_groups_in_one_school(student: TestClient, db: Session, group: Group) -> None:

@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from vgt.models import Group, Membership, Organisation, OrgMember, Role, User
 from vgt.schemas import MemberAddOut
 from vgt.security import hash_secret, new_temp_password
+from vgt.services.context import mark_used
 
 
 def ensure_org_member(db: Session, user: User, org_id: int, role: Role) -> OrgMember:
@@ -33,6 +34,7 @@ def join_group(db: Session, user: User, group: Group, role: Role = Role.student)
         db.refresh(user)
     user.current_org_id = group.org_id
     user.current_group_id = group.id
+    mark_used(db, user, group.org_id)
     return added
 
 

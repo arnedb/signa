@@ -18,6 +18,7 @@ import { DictionaryPage, DifficultPage, validateDictionarySearch, WordPage } fro
 import { HomePage } from "@/pages/Home";
 import { PracticePage, validatePracticeSearch } from "@/pages/Practice";
 import { ProfilePage } from "@/pages/Profile";
+import { SwitchSchoolPage, validateSwitchSearch } from "@/pages/SwitchSchool";
 import { validateAdminWordsSearch } from "@/pages/admin/Words";
 
 interface Context {
@@ -104,6 +105,20 @@ const wordRoute = createRoute({
 });
 
 const profileRoute = createRoute({ getParentRoute: () => appRoute, path: "/profile", component: ProfilePage });
+
+// A full page to switch school, outside the app and admin layouts: both link to it.
+const switchRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/switch",
+  validateSearch: validateSwitchSearch,
+  beforeLoad: async ({ context, location }) => {
+    const me = await context.queryClient.ensureQueryData(meQuery);
+    if (!me) throw redirect({ to: "/login", search: { redirect: location.href } });
+  },
+  component: function SwitchSchool() {
+    return <SwitchSchoolPage search={switchRoute.useSearch()} />;
+  },
+});
 
 // --- teachers (/admin) ----------------------------------------------------------------------
 
@@ -192,6 +207,7 @@ export const routeTree = rootRoute.addChildren([
   loginRoute,
   joinRoute,
   recoverRoute,
+  switchRoute,
   appRoute.addChildren([homeRoute, practiceRoute, difficultRoute, dictionaryRoute, wordRoute, profileRoute]),
   adminRoute.addChildren([
     adminWordsRoute,

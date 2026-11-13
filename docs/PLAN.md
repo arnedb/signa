@@ -65,7 +65,7 @@ languages    code (vgt | lsfb | ngt | …), name
 organisations id, name, slug, language_code, active, created_at   -- a school
 users        id, username, password_hash, recovery_hash, is_superadmin,
              current_org_id, current_group_id, created_at, last_active_at
-org_members  user_id, org_id, role (student | teacher | admin)    -- role per school
+org_members  user_id, org_id, role (student | teacher | admin), last_used_at  -- per school
 groups       id, org_id, year, weekday, label, invite_code, active
 memberships  user_id, group_id          -- any number, in any of the user's schools
 words        id, org_id, gloss, year, lesson, list_number, position, notes,
@@ -86,9 +86,11 @@ jobs         id, org_id, kind (transcode | split), status (queued | running | do
   are ignored. Clips are served to members of the clip's school only.
 - **One account, several schools and groups.** A role is per school (`org_members`): someone
   can be a teacher in one school and a student in another. The current school and group are
-  stored on the user, so web and mobile agree; `PUT /me/context` changes them, and a
-  switcher in the header shows when there is a choice. When the user loses access, a valid
-  default is chosen. Logged-in users join another group, of any school, with its invite link
+  stored on the user, so web and mobile agree and the last school used stays chosen after
+  logging in again; `PUT /me/context` changes them. When there is a choice, the header shows
+  the current school; it opens a full page (`/switch`) to choose another school or group.
+  When the user loses access, the school they used most recently (`org_members.last_used_at`)
+  is chosen; with one school, that one. Logged-in users join another group, of any school, with its invite link
   (`POST /me/join`).
 - **Superadmins** (`vgt create-admin`) create and deactivate schools and act as admin in each.
   School admins manage their own members: add an existing account or a new one, change

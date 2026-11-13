@@ -1,82 +1,57 @@
 import type { Me } from "@vgt/api-client";
 import { t } from "@vgt/core";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
+import { ArrowLeftRight } from "lucide-react";
 
-import { Select } from "@/components/ui/input";
-import { api, meQuery, unwrap } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
-interface Choice {
-  value: string;
+export interface Choice {
+  org_id: number;
+  group_id: number | null;
   label: string;
 }
 
-/** The school + group choices of a user, grouped by school. */
-export function contextChoices(me: Me): { school: string; choices: Choice[] }[] {
-  const several = me.organisations.length > 1;
+export interface SchoolChoices {
+  org: Me["organisations"][number];
+  choices: Choice[];
+}
+
+/** The school + group choices of a user, grouped by school. A school without groups is one choice. */
+export function contextChoices(me: Me): SchoolChoices[] {
   return me.organisations.map((org) => {
     const groups = me.groups.filter((g) => g.org_id === org.id);
-    // With several schools, the closed select must still show which school is chosen.
     const choices = groups.length
-      ? groups.map((g) => ({ value: `${org.id}:${g.id}`, label: several ? `${org.name} · ${g.label}` : g.label }))
-      : [{ value: `${org.id}:`, label: org.name }];
-    return { school: org.name, choices };
+      ? groups.map((g) => ({ org_id: org.id, group_id: g.id, label: g.label }))
+      : [{ org_id: org.id, group_id: null, label: org.name }];
+    return { org, choices };
   });
 }
 
+/** Whether the user can choose between schools or groups at all. */
+export function hasChoice(me: Me): boolean {
+  return contextChoices(me).reduce((n, s) => n + s.choices.length, 0) > 1;
+}
+
 /**
- * Pick the school and group to work in. Shown only when there is a choice: a user with one
- * school and one group never sees it.
+ * The current school (or group, with one school) in the header. It opens the page to switch
+ * school. Shown only when there is a choice: a user with one school and one group never sees it.
  */
 export function ContextSwitcher({ me, admin = false, className }: { me: Me; admin?: boolean; className?: string }) {
-  const qc = useQueryClient();
-  const navigate = useNavigate();
-  const select = useMutation({
-    mutationFn: ({ org_id, group_id }: { org_id: number; group_id: number | null }) =>
-      unwrap(api.PUT("/api/v1/me/context", { body: { org_id, group_id } })),
-    onSuccess: (next) => {
-      // Everything except the user and the server info belongs to the old school.
-      qc.removeQueries({ predicate: (q) => !["me", "health"].includes(String(q.queryKey[0])) });
-      qc.setQueryData(meQuery.queryKey, next);
-      void navigate({ to: admin ? "/admin" : "/" });
-    },
-  });
-
-  const schools = contextChoices(me);
-  const count = schools.reduce((n, s) => n + s.choices.length, 0);
-  if (count < 2 || !me.org) return null;
-  const value = `${me.org.id}:${me.group?.id ?? ""}`;
-  const several = schools.length > 1;
-
+  if (!me.org || !hasChoice(me)) return null;
+  const label = me.organisations.length > 1 ? me.org.name : (me.group?.label ?? me.org.name);
   return (
-    <Select
-      aria-label={t.context.label}
-      className={cn("h-9 w-auto max-w-44 truncate text-sm sm:max-w-56", className)}
-      value={value}
-      disabled={select.isPending}
-      onChange={(e) => {
-        const [org, group] = e.target.value.split(":");
-        select.mutate({ org_id: Number(org), group_id: group ? Number(group) : null });
-      }}
-    >
-      {schools.map((s) =>
-        several ? (
-          <optgroup key={s.school} label={s.school}>
-            {s.choices.map((c) => (
-              <option key={c.value} value={c.value}>
-                {c.label}
-              </option>
-            ))}
-          </optgroup>
-        ) : (
-          s.choices.map((c) => (
-            <option key={c.value} value={c.value}>
-              {c.label}
-            </option>
-          ))
-        ),
+    <Link
+      to="/switch"
+      search={admin ? { from: "admin" } : {}}
+      title={t.context.switch}
+      className={cn(
+        "flex h-9 min-w-0 items-center gap-2 rounded-md border px-3 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
+        className,
       )}
-    </Select>
+    >
+      <ArrowLeftRight className="size-4 shrink-0" aria-hidden />
+      <span className="sr-only">{t.context.switch}: </span>
+      <span className="max-w-32 truncate sm:max-w-48">{label}</span>
+    </Link>
   );
 }
