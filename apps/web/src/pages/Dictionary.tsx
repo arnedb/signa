@@ -130,22 +130,25 @@ function WordTile({ word, detail, showPlace = true }: { word: Word; detail?: str
           </div>
         )}
       </div>
-      <div className="min-w-0 px-1 pb-0.5">
-        <Link
-          to="/dictionary/$wordId"
-          params={{ wordId: String(word.id) }}
-          className="block truncate font-display text-lg leading-snug font-medium hover:text-primary hover:underline"
+      {/* One link for the name and its details, so the link says everything about the word. */}
+      <Link
+        to="/dictionary/$wordId"
+        params={{ wordId: String(word.id) }}
+        className="group/name block min-w-0 rounded-md px-1 pb-0.5"
+      >
+        <span
+          className="block truncate font-display text-lg leading-snug font-medium group-hover/name:text-primary group-hover/name:underline"
           lang={glossLang}
         >
           {word.gloss}
-        </Link>
+        </span>
         {showPlace && (
-          <p className="text-xs text-muted-foreground">
+          <span className="block text-xs text-muted-foreground">
             {[t.app.year(word.year), word.list_number && t.app.list(word.list_number)].filter(Boolean).join(" · ")}
-          </p>
+          </span>
         )}
-        {detail && <p className="text-xs text-muted-foreground">{detail}</p>}
-      </div>
+        {detail && <span className="block text-xs text-muted-foreground">{detail}</span>}
+      </Link>
     </div>
   );
 }
