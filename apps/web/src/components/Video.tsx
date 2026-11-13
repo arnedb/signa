@@ -1,4 +1,4 @@
-import { RotateCcw, Snail } from "lucide-react";
+import { Snail } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { t } from "@vgt/core";
@@ -6,7 +6,7 @@ import { t } from "@vgt/core";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-/** A looping sign video with replay and slow-motion controls. Videos have no sound. */
+/** A looping sign video with a slow-motion control. Videos have no sound. */
 export function SignVideo({
   src,
   poster,
@@ -52,18 +52,6 @@ export function SignVideo({
       />
       {!controls && (
         <div className="flex justify-center gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              const v = ref.current;
-              if (!v) return;
-              v.currentTime = 0;
-              void v.play();
-            }}
-          >
-            <RotateCcw aria-hidden /> {t.practice.replay}
-          </Button>
           <Button variant="ghost" size="sm" aria-pressed={slow} onClick={() => setSlow((s) => !s)}>
             <Snail aria-hidden /> {slow ? t.practice.normalSpeed : t.practice.slow}
           </Button>

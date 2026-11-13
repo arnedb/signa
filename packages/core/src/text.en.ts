@@ -128,7 +128,6 @@ export const en: Text = {
     unknown: "I didn't know it",
     undo: "Undo last",
     keys: "Space: show answer · →: I knew it · ←: I didn't know it",
-    replay: "Play again",
     slow: "Slower",
     normalSpeed: "Normal speed",
     stop: "Stop",
