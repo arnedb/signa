@@ -65,6 +65,33 @@ def test_import_legacy(db: Session, tmp_path: Path, sample_video: Path, org: Org
     assert import_legacy(db, other.id, lexicon, videos).words_created == 3
 
 
+def test_import_legacy_without_year(
+    db: Session, tmp_path: Path, sample_video: Path, org: Organisation
+) -> None:
+    # The old app only added the year column when year 2 came; older databases lack it.
+    videos = tmp_path / "old"
+    videos.mkdir()
+    shutil.copy(sample_video, videos / "a.mp4")
+    lexicon = tmp_path / "lexicon.db"
+    con = sqlite3.connect(lexicon)
+    con.execute(
+        "CREATE TABLE words (guid TEXT PRIMARY KEY, word TEXT NOT NULL, list_number TEXT,"
+        " video_file TEXT NOT NULL, created_at TEXT, embedding BLOB)"
+    )
+    con.execute("CREATE VIRTUAL TABLE words_fts USING fts5(guid UNINDEXED, word)")
+    con.execute(
+        "INSERT INTO words (guid, word, list_number, video_file)"
+        " VALUES ('g1', 'huis', '2.1', 'a.mp4')"
+    )
+    con.commit()
+    con.close()
+
+    report = import_legacy(db, org.id, lexicon, videos)
+    assert report.words_created == 1
+    word = db.scalars(select(Word)).one()
+    assert (word.gloss, word.year, word.list_number, word.legacy_id) == ("huis", 1, "2.1", "g1")
+
+
 def test_lesson_of() -> None:
     assert lesson_of("3.2") == 3
     assert lesson_of(None) is None
