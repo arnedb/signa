@@ -86,6 +86,7 @@ Two environments run the same image, each behind Traefik with its own database a
 
 Each deploy backs up the database, waits for the health check and rolls back if the new
 version does not start. Setup, secrets, backups and restores: [docs/DEPLOY.md](docs/DEPLOY.md).
+The very first PRO deploy, step by step: [docs/FIRST-PRO-DEPLOY.md](docs/FIRST-PRO-DEPLOY.md).
 
 Import the old app into PRO (try it in DEV or on a copy first):
 
