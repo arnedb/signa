@@ -7,6 +7,10 @@ It replaces the earlier `vgt` app, and is rebuilt from scratch.
 
 - One app and one deployment, used by students, teachers and admins.
 - Simple practice: no streaks, no points, no scheduling algorithm. Modern, but plain.
+  Later, practice may become more playful and colourful, with a companion figure you look
+  after, but personal only and without guilt or sound. See [GAMIFICATION.md](GAMIFICATION.md).
+- Never sound. The app gives no audio feedback of any kind, and sign videos are muted.
+  Feedback is visual only.
 - Reuse the videos that are already labelled, and replace them gradually with the
   teacher's new recordings.
 - Accounts linked to groups. A group is a course year plus a weekday, for example
@@ -223,6 +227,7 @@ label and trim videos. Its features now live in `/admin`:
 | 7 | Launch on `vgt.arnedb.be` (PRO): legacy import into PRO, first admin, first release, daily backup cron on the server, announce to the groups | To do. Deploy with backup and rollback is already in place |
 | 8 | Portfolio: demo videos as the `demo-media-v1` release asset, public demo, screenshots in the README (the architecture diagram is there), `docs/case-study.md`, accessibility and Lighthouse pass | To do |
 | 9 | Mobile (later): Expo app with login, practice and browse, offline clip caching. Publish via EAS to TestFlight and Play internal testing first | To do. API, auth, client and `packages/core` are ready for it (see `apps/mobile/README.md`) |
+| 10 | Playful practice: companion figure, sign collection, lesson map, a more colourful design for students with a calm mode. Later a fingerspelling "galgje" with on-device camera detection. See [GAMIFICATION.md](GAMIFICATION.md) | Idea |
 
 Milestones 1 to 4 give a usable product. Milestone 6 was the largest.
 
@@ -231,6 +236,8 @@ Milestones 1 to 4 give a usable product. Milestone 6 was the largest.
 - UI text is in Dutch, French and English; code and docs are in English. All UI text lives
   in `packages/core/src/text*.ts`. Dutch (`text.ts`) is the reference: add a text there first,
   then in every other language (the type checker lists what is missing).
+- No sound, ever: no sound effects, music or voice. Feedback is movement, colour and the
+  companion's face and hands, and it respects `prefers-reduced-motion`.
 - Keyboard-only practice works (space or Enter to reveal, ←/→ to answer, Backspace or z to undo).
 - Secrets live only in GitHub secrets and the server `.env`, never in the repository.
 - Deploys only happen when CI passes. PRO only gets an image that already ran in DEV.
