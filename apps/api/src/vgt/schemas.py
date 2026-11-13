@@ -162,6 +162,12 @@ class WordOut(ORM):
     clips: list[ClipOut]
 
 
+class DifficultWordOut(WordOut):
+    """A word whose most recent answer was wrong, with the directions in which it was."""
+
+    directions: list[Direction]
+
+
 class AdminWordOut(WordOut):
     status: WordStatus
     legacy_id: str | None

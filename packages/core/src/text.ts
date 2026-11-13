@@ -115,7 +115,7 @@ export const nl = {
     startCount: (n: number) => `Start (${n})`,
     noWords: "Er zijn hier nog geen woorden met een video.",
     difficultTitle: "Mijn moeilijke woorden",
-    difficultIntro: "De woorden die je de laatste keer niet kende.",
+    difficultIntro: "De woorden die je de laatste keer niet kende. Je oefent ze in de richting waarin je ze niet kende.",
     difficultEmpty: "Geen moeilijke woorden. Goed bezig!",
     practiseDifficult: "Oefen moeilijke woorden",
     progress: (i: number, n: number) => `${i} van ${n}`,

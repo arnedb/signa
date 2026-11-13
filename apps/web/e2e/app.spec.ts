@@ -45,6 +45,9 @@ test("practise a list with the keyboard and repeat the missed words", async ({ p
   await page.goto("/difficult");
   await expect(page.getByRole("link", { name: /hallo/ })).toBeVisible();
   await expect(page.getByRole("link", { name: /goedemorgen/ })).toBeVisible();
+  // Only the direction that was practised is difficult.
+  await expect(page.getByRole("link", { name: /hallo/ })).toContainText("Gebaar → woord");
+  await expect(page.getByRole("link", { name: /hallo/ })).not.toContainText("Woord → gebaar");
 });
 
 test("search the dictionary", async ({ page }) => {

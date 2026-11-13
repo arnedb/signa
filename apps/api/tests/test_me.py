@@ -46,7 +46,30 @@ def test_results_and_difficult_words(student: TestClient, db: Session) -> None:
     ]
     assert student.post("/api/v1/me/results", json={"results": results}).json() == {"saved": 4}
     difficult = student.get("/api/v1/me/difficult-words").json()
-    assert [d["gloss"] for d in difficult] == ["w0"]
+    assert [(d["gloss"], d["directions"]) for d in difficult] == [("w0", ["w2s"]), ("w1", ["s2w"])]
+
+
+def test_difficult_words_per_direction(student: TestClient, db: Session) -> None:
+    w = _words(db, 2)
+
+    def answer(word: Word, direction: str, correct: bool) -> None:
+        body = {"results": [{"word_id": word.id, "direction": direction, "correct": correct}]}
+        assert student.post("/api/v1/me/results", json=body).status_code == 200
+
+    def difficult() -> list[tuple[str, list[str]]]:
+        words = student.get("/api/v1/me/difficult-words").json()
+        return [(d["gloss"], d["directions"]) for d in words]
+
+    answer(w[0], "s2w", False)
+    answer(w[0], "w2s", False)
+    answer(w[1], "w2s", False)
+    assert difficult() == [("w0", ["w2s", "s2w"]), ("w1", ["w2s"])]
+    # Knowing it in one direction leaves the other direction difficult.
+    answer(w[0], "w2s", True)
+    assert difficult() == [("w0", ["s2w"]), ("w1", ["w2s"])]
+    answer(w[0], "s2w", True)
+    answer(w[1], "w2s", True)
+    assert difficult() == []
 
 
 def test_export_and_delete(student: TestClient, db: Session) -> None:

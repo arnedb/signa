@@ -6,6 +6,7 @@ export type { components, paths };
 export type Schemas = components["schemas"];
 export type Me = Schemas["Me"];
 export type Word = Schemas["WordOut"];
+export type DifficultWord = Schemas["DifficultWordOut"];
 export type AdminWord = Schemas["AdminWordOut"];
 export type Clip = Schemas["ClipOut"];
 export type Catalog = Schemas["Catalog"];
