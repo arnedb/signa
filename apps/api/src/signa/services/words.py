@@ -1,13 +1,61 @@
 from typing import Any
 
 from fastapi import HTTPException, status
-from sqlalchemy.orm import Session
+from sqlalchemy import ColumnElement, and_, exists, func, not_, or_, select
+from sqlalchemy.orm import Session, aliased
 
 from signa import media
-from signa.models import Clip, User, Word, WordEvent
+from signa.models import Clip, Group, User, Word, WordEvent, WordStatus
 from signa.schemas import AdminWordOut, ClipOut, WordOut
 
-WORD_FIELDS = ("gloss", "year", "lesson", "list_number", "position", "notes", "status")
+WORD_FIELDS = (
+    "gloss",
+    "year",
+    "lesson",
+    "list_number",
+    "position",
+    "notes",
+    "status",
+    "group_ids",
+)
+
+
+def visible_to(group_id: int | None) -> ColumnElement[bool]:
+    """Which words a group practises: the shared words (no groups), and the words limited to
+    this group. A published word for this group replaces a shared word with the same gloss
+    on the same list, so the group gets its own video or its own version of the list.
+
+    Without a group, only the shared words.
+    """
+    shared = not_(Word.groups.any())
+    if group_id is None:
+        return shared
+    variant = aliased(Word)
+    replaced = exists(
+        select(variant.id).where(
+            variant.id != Word.id,
+            variant.org_id == Word.org_id,
+            variant.year == Word.year,
+            variant.list_number.is_not_distinct_from(Word.list_number),
+            func.lower(variant.gloss) == func.lower(Word.gloss),
+            variant.status == WordStatus.published,
+            variant.groups.any(Group.id == group_id),
+        )
+    )
+    return or_(Word.groups.any(Group.id == group_id), and_(shared, not_(replaced)))
+
+
+def org_groups(db: Session, org_id: int, ids: list[int]) -> list[Group]:
+    """The groups with these ids, all of this school, in id order; 400 for any other id."""
+    wanted = set(ids)
+    groups = list(
+        db.scalars(
+            select(Group).where(Group.org_id == org_id, Group.id.in_(wanted)).order_by(Group.id)
+        )
+    )
+    if len(groups) != len(wanted):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Unknown group")
+    return groups
 
 
 def clip_out(clip: Clip) -> ClipOut:
@@ -40,6 +88,7 @@ def word_out(word: Word) -> WordOut:
         list_number=word.list_number,
         position=word.position,
         notes=word.notes,
+        group_ids=word.group_ids,
         clips=_ordered_clips(word, include_archived=False),
     )
 
@@ -73,16 +122,22 @@ def log(db: Session, word: Word, user: User | None, action: str, diff: dict[str,
 
 
 def apply_changes(db: Session, word: Word, changes: dict[str, Any], user: User | None) -> dict:
-    """Set fields on a word and log a single ``update`` event with ``{field: [old, new]}``."""
+    """Set fields on a word and log a single ``update`` event with ``{field: [old, new]}``.
+
+    ``group_ids`` must be groups of the word's school (see ``org_groups``).
+    """
     diff: dict[str, list[Any]] = {}
     for field, new in changes.items():
-        if field not in WORD_FIELDS:
+        if field not in WORD_FIELDS or (field == "group_ids" and new is None):
             continue
         old = _plain(getattr(word, field))
-        new = _plain(new)
+        new = sorted(set(new)) if field == "group_ids" else _plain(new)
         if old != new:
             diff[field] = [old, new]
-            setattr(word, field, new)
+            if field == "group_ids":
+                word.groups = org_groups(db, word.org_id, new)
+            else:
+                setattr(word, field, new)
     if diff:
         word.updated_by = user.id if user else None
         log(db, word, user, "update", diff)

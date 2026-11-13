@@ -6,11 +6,12 @@ import { ArrowLeft, Pause, Play, Plus, RefreshCw, Scissors, Trash2, Upload } fro
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 
 import { ErrorView, Field, PageTitle, Spinner } from "@/components/common";
+import { GroupPicker, useGroups } from "@/components/GroupPicker";
 import { Timeline, isTyping, useVideoTime } from "@/components/Timeline";
 import { Button } from "@/components/ui/button";
 import { Alert, Badge, Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input, Label, Select } from "@/components/ui/input";
-import { api, catalogQuery, errorMessage, unwrap } from "@/lib/api";
+import { adminCatalogQuery, api, errorMessage, unwrap } from "@/lib/api";
 import { useLessonField } from "@/lib/lesson";
 import { isRunning, uploadFile } from "@/lib/upload";
 import { cn, formatDate, formatSeconds } from "@/lib/utils";
@@ -192,6 +193,11 @@ export function RecordingPage({ recordingId }: { recordingId: number }) {
 
 const glossKey = (g: string) => g.trim().replace(/\s+/g, " ").toLocaleLowerCase("nl");
 
+/** Whether a group would get both words: both shared, or for a common group (as the server checks). */
+function sameGroups(a: number[], b: number[]): boolean {
+  return (a.length === 0 && b.length === 0) || a.some((id) => b.includes(id));
+}
+
 function Editor({ recording }: { recording: Recording }) {
   const qc = useQueryClient();
   const video = useRef<HTMLVideoElement>(null);
@@ -203,7 +209,11 @@ function Editor({ recording }: { recording: Recording }) {
   const [year, setYear] = useState<number>(1);
   const [list, setList] = useState<string>("");
   const [publish, setPublish] = useState(false);
-  const catalog = useQuery(catalogQuery);
+  // The groups this recording is for: new words are only for them, and a typed name matches
+  // the word those groups have on the list (a shared one, or their own version of it).
+  const [groupIds, setGroupIds] = useState<number[]>([]);
+  const groups = useGroups();
+  const catalog = useQuery(adminCatalogQuery);
   const words = useQuery(adminWordsQuery({ year }));
   const listNumber = list.trim() || null;
   const lesson = useLessonField(list);
@@ -224,7 +234,7 @@ function Editor({ recording }: { recording: Recording }) {
   const resolve = (text: string): Resolved => {
     if (!text.trim()) return { kind: "skip" };
     const same = byGloss.get(glossKey(text)) ?? [];
-    const onList = same.find((w) => (w.list_number ?? null) === listNumber);
+    const onList = same.find((w) => (w.list_number ?? null) === listNumber && sameGroups(w.group_ids, groupIds));
     if (onList) return { kind: "existing", word: onList };
     const elsewhere = [...new Set(same.map((w) => t.app.list(w.list_number ?? "—")))].join(", ");
     return { kind: "new", elsewhere: elsewhere || null };
@@ -250,6 +260,7 @@ function Editor({ recording }: { recording: Recording }) {
             lesson: lesson.number,
             list_number: listNumber,
             publish,
+            group_ids: groupIds,
             items: rows.flatMap((r): { start: number; end: number; word_id?: number; gloss?: string; mode?: "replace" }[] => {
               const to = resolve(r.text);
               if (to.kind === "existing") return [{ start: r.start, end: r.end, word_id: to.word.id, mode: "replace" }];
@@ -485,6 +496,7 @@ function Editor({ recording }: { recording: Recording }) {
                 )}
               </Field>
             </div>
+            {groups.length > 1 && <GroupPicker value={groupIds} onChange={setGroupIds} />}
           </CardContent>
         </Card>
 

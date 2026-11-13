@@ -1,16 +1,17 @@
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile, status
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import selectinload
 
-from signa.deps import DB, Teacher
+from signa.deps import DB, Teacher, org_group
 from signa.jobs import enqueue
-from signa.models import Clip, JobKind, Word, WordEvent, WordStatus
+from signa.models import Clip, Group, JobKind, Word, WordEvent, WordStatus
 from signa.routers.uploads import save_upload
-from signa.routers.words import word_query
+from signa.routers.words import build_catalog, word_query
 from signa.schemas import (
     AdminWordOut,
+    Catalog,
     JobOut,
     TrimIn,
     WordBulkUpdate,
@@ -48,20 +49,38 @@ def list_words(
     q: str | None = None,
     status_: Annotated[WordStatus | None, Query(alias="status")] = None,
     missing_clip: bool = False,
+    group_id: int | None = None,
 ) -> list[AdminWordOut]:
+    """All words of the school. ``group_id`` keeps the words that group practises from: the
+    shared words and its own (shared words it replaces included, so both can be compared)."""
     stmt = word_query(ctx.org.id, year, lesson, list_number, q)
     if status_ is not None:
         stmt = stmt.where(Word.status == status_)
+    if group_id is not None:
+        org_group(db, ctx, group_id)
+        stmt = stmt.where(or_(~Word.groups.any(), Word.groups.any(Group.id == group_id)))
     words = [svc.admin_word_out(w) for w in db.scalars(stmt)]
     if missing_clip:
         words = [w for w in words if not any(not c.archived for c in w.clips)]
     return words
 
 
+@router.get("/catalog", response_model=Catalog)
+def admin_catalog(ctx: Teacher, db: DB) -> Catalog:
+    """Years, lessons and lists of every word of the school (drafts and every group's)."""
+    return build_catalog(db, Word.org_id == ctx.org.id)
+
+
 @router.post("/words", response_model=AdminWordOut, status_code=201)
 def create_word(body: WordCreate, ctx: Teacher, db: DB) -> AdminWordOut:
     user = ctx.user
-    word = Word(**body.model_dump(), org_id=ctx.org.id, created_by=user.id, updated_by=user.id)
+    word = Word(
+        **body.model_dump(exclude={"group_ids"}),
+        org_id=ctx.org.id,
+        created_by=user.id,
+        updated_by=user.id,
+        groups=svc.org_groups(db, ctx.org.id, body.group_ids),
+    )
     db.add(word)
     db.flush()
     svc.log(db, word, user, "create", svc.snapshot(word))
@@ -83,11 +102,13 @@ def bulk_update_words(body: WordBulkUpdate, ctx: Teacher, db: DB) -> list[AdminW
         db.scalars(
             select(Word)
             .where(Word.org_id == ctx.org.id, Word.id.in_(ids))
-            .options(selectinload(Word.clips))
+            .options(selectinload(Word.clips), selectinload(Word.groups))
         )
     )
     if len(words) != len(ids):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Word not found")
+    if changes.get("group_ids") is not None:
+        svc.org_groups(db, ctx.org.id, changes["group_ids"])
     for word in words:
         svc.apply_changes(db, word, changes, ctx.user)
     db.commit()

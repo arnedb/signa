@@ -34,7 +34,7 @@ from signa.security import hash_secret, new_recovery_code, verify_secret
 from signa.services.auth import clear_cookie, end_all_sessions
 from signa.services.context import me_out, select_context
 from signa.services.members import join_group, sole_admin_of
-from signa.services.words import word_out
+from signa.services.words import visible_to, word_out
 
 router = APIRouter(prefix="/me", tags=["me"])
 
@@ -201,7 +201,7 @@ def save_results(body: ResultsIn, user: CurrentUser, db: DB) -> ResultsOut:
 
 @router.get("/difficult-words", response_model=list[DifficultWordOut])
 def difficult_words(ctx: Member, db: DB) -> list[DifficultWordOut]:
-    """Published words of the current school whose most recent answer was wrong.
+    """Published words of the current school and group whose most recent answer was wrong.
 
     Each direction counts on its own: a word is difficult in a direction when the latest
     answer in that direction was wrong. `directions` lists those directions.
@@ -220,8 +220,9 @@ def difficult_words(ctx: Member, db: DB) -> list[DifficultWordOut]:
             Result.correct.is_(False),
             Word.status == WordStatus.published,
             Word.org_id == ctx.org.id,
+            visible_to(ctx.group.id if ctx.group else None),
         )
-        .options(selectinload(Word.clips))
+        .options(selectinload(Word.clips), selectinload(Word.groups))
         .order_by(Word.year, Word.lesson, Word.list_number, Word.position, Word.id)
     ).all()
     directions: dict[int, list[Direction]] = {}

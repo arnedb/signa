@@ -1,13 +1,13 @@
 from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Query, status
-from sqlalchemy import Select, func, or_, select
-from sqlalchemy.orm import selectinload
+from sqlalchemy import ColumnElement, Select, func, or_, select
+from sqlalchemy.orm import Session, selectinload
 
 from signa.deps import DB, Member
 from signa.models import Clip, Word, WordStatus
 from signa.schemas import Catalog, CatalogList, CatalogYear, WordOut
-from signa.services.words import word_out
+from signa.services.words import visible_to, word_out
 
 router = APIRouter(tags=["words"])
 
@@ -20,7 +20,11 @@ def word_query(
     q: str | None = None,
     ids: list[int] | None = None,
 ) -> Select[Word]:
-    stmt = select(Word).where(Word.org_id == org_id).options(selectinload(Word.clips))
+    stmt = (
+        select(Word)
+        .where(Word.org_id == org_id)
+        .options(selectinload(Word.clips), selectinload(Word.groups))
+    )
     if year is not None:
         stmt = stmt.where(Word.year == year)
     if lesson is not None:
@@ -50,13 +54,16 @@ def list_words(
     limit: Annotated[int | None, Query(ge=1, le=500)] = None,
     offset: Annotated[int, Query(ge=0)] = 0,
 ) -> list[WordOut]:
-    """Published words of the current school, in course order.
+    """Published words of the current school and group, in course order.
+
+    The group's own words replace shared words with the same gloss on the same list (see
+    ``visible_to``).
 
     ``with_clip`` keeps only words that have a clip. ``limit`` and ``offset`` page through
     the result; without ``limit`` every matching word is returned.
     """
     stmt = word_query(ctx.org.id, year, lesson, list_number, q, ids).where(
-        Word.status == WordStatus.published
+        Word.status == WordStatus.published, visible_to(ctx.group.id if ctx.group else None)
     )
     if with_clip:
         stmt = stmt.where(Word.clips.any(Clip.archived.is_(False)))
@@ -67,18 +74,33 @@ def list_words(
 
 @router.get("/words/{word_id}", response_model=WordOut)
 def get_word(word_id: int, ctx: Member, db: DB) -> WordOut:
-    word = db.get(Word, word_id)
-    if word is None or word.org_id != ctx.org.id or word.status != WordStatus.published:
+    word = db.scalar(
+        word_query(ctx.org.id, ids=[word_id]).where(
+            Word.status == WordStatus.published, visible_to(ctx.group.id if ctx.group else None)
+        )
+    )
+    if word is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Word not found")
     return word_out(word)
 
 
 @router.get("/catalog", response_model=Catalog)
 def catalog(ctx: Member, db: DB) -> Catalog:
-    """Years, lessons and lists of the current school that have published words, with counts."""
+    """Years, lessons and lists with published words for the current school and group, with
+    counts."""
+    return build_catalog(
+        db,
+        Word.status == WordStatus.published,
+        Word.org_id == ctx.org.id,
+        visible_to(ctx.group.id if ctx.group else None),
+    )
+
+
+def build_catalog(db: Session, *where: ColumnElement[bool]) -> Catalog:
+    """Years, lessons and lists of the words that match ``where``, with counts."""
     rows = db.execute(
         select(Word.year, Word.lesson, Word.list_number, func.count())
-        .where(Word.status == WordStatus.published, Word.org_id == ctx.org.id)
+        .where(*where)
         .group_by(Word.year, Word.lesson, Word.list_number)
         .order_by(Word.year, Word.lesson, Word.list_number)
     ).all()

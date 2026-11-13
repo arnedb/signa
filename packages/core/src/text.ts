@@ -216,6 +216,14 @@ export const nl = {
     moveWordsTitle: (n: number) => (n === 1 ? "1 woord verplaatsen" : `${n} woorden verplaatsen`),
     moveWordsIntro: "Kies een nieuw jaar, een nieuwe les, een nieuwe lijst of een combinatie. De les wordt ingevuld vanuit de lijst (lijst 3.2 is les 3); je kunt hem aanpassen. Laat een veld leeg om het niet te wijzigen.",
     keepAsIs: "Niet wijzigen",
+    wordGroups: "Groepen",
+    allGroups: "Alle groepen",
+    forGroups: "Voor groepen",
+    setGroups: "Groepen",
+    setGroupsTitle: (n: number) => (n === 1 ? "Groepen voor 1 woord" : `Groepen voor ${n} woorden`),
+    groupsHint:
+      "Niets aangevinkt: voor alle groepen. Een woord voor een groep vervangt voor die groep het gedeelde woord met dezelfde naam op dezelfde lijst. Zo krijgt een groep een andere video, of een eigen versie van de lijst.",
+    inactiveGroup: (label: string) => `${label} (niet actief)`,
     bulkDone: (n: number) => (n === 1 ? "1 woord bijgewerkt." : `${n} woorden bijgewerkt.`),
     bulkHint: "Tip: shift-klik om een reeks te selecteren.",
     deleteWord: "Woord verwijderen",
@@ -272,6 +280,7 @@ export const nl = {
       position: "volgorde",
       notes: "notities",
       status: "status",
+      group_ids: "groepen",
     } as Record<string, string>,
     sources: { legacy: "oude app", recording: "opname", demo: "demo" } as Record<string, string>,
     // Recording sessions

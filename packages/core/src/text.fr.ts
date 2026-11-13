@@ -214,6 +214,14 @@ export const fr: Text = {
     moveWordsTitle: (n) => (n === 1 ? "Déplacer 1 mot" : `Déplacer ${n} mots`),
     moveWordsIntro: "Choisissez une nouvelle année, leçon, liste, ou une combinaison. La leçon est remplie à partir de la liste (la liste 3.2 est la leçon 3) ; vous pouvez la modifier. Laissez un champ vide pour ne pas le modifier.",
     keepAsIs: "Ne pas modifier",
+    wordGroups: "Groupes",
+    allGroups: "Tous les groupes",
+    forGroups: "Pour les groupes",
+    setGroups: "Groupes",
+    setGroupsTitle: (n: number) => (n === 1 ? "Groupes pour 1 mot" : `Groupes pour ${n} mots`),
+    groupsHint:
+      "Rien de coché : pour tous les groupes. Un mot pour un groupe remplace, pour ce groupe, le mot partagé du même nom sur la même liste. Ainsi, un groupe reçoit une autre vidéo, ou sa propre version de la liste.",
+    inactiveGroup: (label: string) => `${label} (inactif)`,
     bulkDone: (n) => (n === 1 ? "1 mot mis à jour." : `${n} mots mis à jour.`),
     bulkHint: "Astuce : maj-clic pour sélectionner une série.",
     deleteWord: "Supprimer le mot",
@@ -270,6 +278,7 @@ export const fr: Text = {
       position: "ordre",
       notes: "notes",
       status: "statut",
+      group_ids: "groupes",
     },
     sources: { legacy: "ancienne app", recording: "enregistrement", demo: "démo" },
     recordingsIntro:

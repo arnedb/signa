@@ -11,6 +11,7 @@ const word = (id: number, year: number, lesson: number | null, list: string | nu
   list_number: list,
   position: id,
   notes: "",
+  group_ids: [],
   clips: [],
 });
 

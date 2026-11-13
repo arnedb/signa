@@ -168,6 +168,8 @@ class WordOut(ORM):
     list_number: str | None
     position: int
     notes: str
+    # The groups this word is limited to; empty means every group of the school.
+    group_ids: list[int]
     clips: list[ClipOut]
 
 
@@ -212,6 +214,7 @@ class WordCreate(BaseModel):
     position: int = 0
     notes: str = ""
     status: WordStatus = WordStatus.draft
+    group_ids: list[int] = Field(default_factory=list, max_length=100)
 
 
 class WordBulkChanges(BaseModel):
@@ -223,6 +226,8 @@ class WordBulkChanges(BaseModel):
         None
     )
     status: WordStatus | None = None
+    # Limit the word to these groups; empty is every group of the school.
+    group_ids: list[int] | None = Field(None, max_length=100)
 
 
 class WordIds(BaseModel):
@@ -247,6 +252,8 @@ class WordUpdate(BaseModel):
     position: int | None = None
     notes: str | None = None
     status: WordStatus | None = None
+    # Limit the word to these groups; empty is every group of the school.
+    group_ids: list[int] | None = Field(None, max_length=100)
 
 
 class EventUser(ORM):
@@ -333,6 +340,8 @@ class RecordingApplyIn(BaseModel):
     )
     # New words are drafts unless this is set.
     publish: bool = False
+    # New words are only for these groups; empty is every group of the school.
+    group_ids: list[int] = Field(default_factory=list, max_length=100)
 
 
 class SplitIn(BaseModel):

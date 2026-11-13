@@ -2,6 +2,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, File, HTTPException, UploadFile, status
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 
 from signa.deps import DB, Teacher
 from signa.jobs import enqueue, wake
@@ -124,16 +125,27 @@ def _create_words(db: DB, body: RecordingApplyIn, ctx: Teacher) -> dict[int, Wor
         if _key(gloss) in seen:
             raise HTTPException(status.HTTP_400_BAD_REQUEST, f"'{gloss}' is in the list twice")
         seen.add(_key(gloss))
+    groups = word_service.org_groups(db, ctx.org.id, body.group_ids)
+    group_ids = {g.id for g in groups}
     on_list = list(
         db.scalars(
-            select(Word).where(
+            select(Word)
+            .where(
                 Word.org_id == ctx.org.id,
                 Word.year == body.year,
-                Word.list_number == list_number,
+                Word.list_number.is_not_distinct_from(list_number),
             )
+            .options(selectinload(Word.groups))
         )
     )
-    taken = sorted(w.gloss for w in on_list if _key(w.gloss) in seen)
+
+    def same_groups(word: Word) -> bool:
+        """Whether some group would get both words: both shared, or limited to a common
+        group. A word for other groups (or a shared one, under a group's own) is fine."""
+        theirs = set(word.group_ids)
+        return (not theirs and not group_ids) or bool(theirs & group_ids)
+
+    taken = sorted(w.gloss for w in on_list if _key(w.gloss) in seen and same_groups(w))
     if taken:
         raise HTTPException(
             status.HTTP_409_CONFLICT,
@@ -153,6 +165,7 @@ def _create_words(db: DB, body: RecordingApplyIn, ctx: Teacher) -> dict[int, Wor
             status=WordStatus.published if body.publish else WordStatus.draft,
             created_by=user.id,
             updated_by=user.id,
+            groups=list(groups),
         )
         db.add(word)
         db.flush()

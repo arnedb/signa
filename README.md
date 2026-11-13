@@ -14,6 +14,8 @@ practise the signs from your course, by year, lesson or list.
   Reported problems with videos are listed under “Meldingen”, next to each clip, until resolved.
 - **Groups** are a course year plus a weekday (“Jaar 1 · dinsdag”). Teachers move students
   between groups, one by one or a whole group at the start of the year. Every move is logged.
+  A word can be limited to some groups, so groups can have the same list number with another
+  video or another set of words.
 - **Schools** each have their own words, groups, recordings and members, and teach one sign
   language. Nothing is shared between schools. One account can be in several schools (with a
   role in each) and in several groups; a switcher in the header picks the school and group.

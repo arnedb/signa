@@ -211,6 +211,14 @@ export const en: Text = {
     moveWordsTitle: (n) => (n === 1 ? "Move 1 word" : `Move ${n} words`),
     moveWordsIntro: "Choose a new year, lesson, list, or a combination. The lesson is filled in from the list (list 3.2 is lesson 3); you can change it. Leave a field empty to keep it as is.",
     keepAsIs: "Keep as is",
+    wordGroups: "Groups",
+    allGroups: "All groups",
+    forGroups: "For groups",
+    setGroups: "Groups",
+    setGroupsTitle: (n: number) => (n === 1 ? "Groups for 1 word" : `Groups for ${n} words`),
+    groupsHint:
+      "Nothing ticked: for every group. A word for a group replaces, for that group, the shared word with the same name on the same list. That is how a group gets another video, or its own version of the list.",
+    inactiveGroup: (label: string) => `${label} (inactive)`,
     bulkDone: (n) => (n === 1 ? "1 word updated." : `${n} words updated.`),
     bulkHint: "Tip: shift-click to select a range.",
     deleteWord: "Delete word",
@@ -267,6 +275,7 @@ export const en: Text = {
       position: "order",
       notes: "notes",
       status: "status",
+      group_ids: "groups",
     },
     sources: { legacy: "old app", recording: "recording", demo: "demo" },
     recordingsIntro:
