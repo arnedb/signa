@@ -31,7 +31,7 @@ test("practise a lesson with the keyboard and repeat the missed words", async ({
   // A fixed direction: the default ("mixed") picks one at random for each word.
   await page.getByText("Gebaar → woord").click();
   await page.getByText("Lesvolgorde").click();
-  await page.getByRole("button", { name: "Start (13)" }).click();
+  await page.getByRole("button", { name: "Start (13 woorden)" }).click();
 
   await expect(page.getByText("1 van 13")).toBeVisible();
   // The answers are saved when the round is done; wait for that before opening the difficult words.
@@ -178,7 +178,7 @@ test("a student switches the interface to French and back", async ({ page }, inf
   await expect(page.locator("html")).toHaveAttribute("lang", "fr");
   await page.goto("/");
   await expect(page.getByRole("heading", { name: "S’exercer" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Commencer (13)" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Commencer (13 mots)" })).toBeVisible();
 
   // The account remembers it, and so does the login page on this device.
   await page.goto("/profile");
@@ -233,14 +233,22 @@ test("a teacher splits a recording and labels the parts as new words", async ({ 
   await item.click();
 
   await expect(page.getByRole("group", { name: /Tijdlijn/ }).getByRole("button")).toHaveCount(3);
+  // The lesson follows the list number.
   await page.getByLabel("Lijst", { exact: true }).fill("9.1");
-  await page.getByRole("button", { name: "Alle lege fragmenten als nieuw woord" }).click();
-  const names = page.getByLabel("Nieuw woord", { exact: true });
-  await expect(names).toHaveCount(3);
-  await names.nth(0).fill("boot");
-  await names.nth(1).fill("huis");
-  await names.nth(2).fill("trein");
-  await expect(page.getByText("Bestaat al in Lijst 2.1: wordt een extra woord")).toBeVisible();
+  await expect(page.getByLabel("Les", { exact: true })).toHaveValue("9");
+  // One word per part: Enter moves on to the next part.
+  const word = page.getByLabel("Woord", { exact: true });
+  await word.fill("boot");
+  await word.press("Enter");
+  await expect(page.getByRole("region", { name: "Fragment 2" })).toBeVisible();
+  await page.getByLabel("Woord", { exact: true }).fill("huis");
+  await expect(page.getByText(/Bestaat al in Lijst 2\.1/)).toBeVisible();
+  await page.getByLabel("Woord", { exact: true }).press("Enter");
+  await page.getByLabel("Woord", { exact: true }).fill("trein");
+  const labelled = page.getByRole("list", { name: "Fragmenten" });
+  await expect(labelled).toContainText("boot");
+  await expect(labelled).toContainText("huis");
+  await expect(labelled).toContainText("trein");
   await page.getByRole("button", { name: "3 video's maken" }).click();
   await expect(page.getByText(/De video's worden gemaakt/)).toBeVisible();
 

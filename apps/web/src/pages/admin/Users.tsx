@@ -149,18 +149,21 @@ export function UsersPage() {
                       {(["student", "teacher", "admin"] as const).map((r) => <option key={r} value={r}>{t.profile.roles[r]}</option>)}
                     </Select>
                   </td>
-                  <td className="px-3 py-2 text-right whitespace-nowrap">
-                    <Button size="sm" variant="ghost" onClick={() => reset.mutate(u.id)} aria-label={`${t.admin.resetPassword}: ${u.username}`}>
-                      <KeyRound aria-hidden />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => window.confirm(t.admin.removeConfirm(u.username)) && remove.mutate(u.id)}
-                      aria-label={`${t.admin.removeMember}: ${u.username}`}
-                    >
-                      <UserMinus aria-hidden />
-                    </Button>
+                  <td className="px-3 py-2">
+                    <div className="flex justify-end gap-1 whitespace-nowrap">
+                      <Button size="sm" variant="ghost" onClick={() => reset.mutate(u.id)} aria-label={`${t.admin.resetPassword}: ${u.username}`}>
+                        <KeyRound aria-hidden /> {t.admin.resetPassword}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-destructive hover:bg-berry-soft hover:text-destructive"
+                        onClick={() => window.confirm(t.admin.removeConfirm(u.username)) && remove.mutate(u.id)}
+                        aria-label={`${t.admin.removeMember}: ${u.username}`}
+                      >
+                        <UserMinus aria-hidden /> {t.admin.removeMember}
+                      </Button>
+                    </div>
                   </td>
                 </tr>
               ))}

@@ -3,7 +3,7 @@ import type { ComponentProps } from "react";
 import { cn } from "@/lib/utils";
 
 const field =
-  "flex w-full rounded-md border bg-card px-3 text-base shadow-xs placeholder:text-muted-foreground disabled:opacity-50 aria-[invalid=true]:border-destructive md:text-sm";
+  "flex w-full rounded-md border-2 border-ink/80 bg-card px-3 text-base placeholder:text-muted-foreground focus-visible:border-primary disabled:opacity-50 aria-[invalid=true]:border-destructive md:text-sm";
 
 export function Input({ className, ...props }: ComponentProps<"input">) {
   return (
@@ -24,9 +24,9 @@ export function Textarea({ className, ...props }: ComponentProps<"textarea">) {
 }
 
 export function Select({ className, ...props }: ComponentProps<"select">) {
-  return <select className={cn(field, "h-10 py-2 pr-8", className)} {...props} />;
+  return <select className={cn(field, "select-chevron h-10 cursor-pointer py-0 pr-9", className)} {...props} />;
 }
 
 export function Label({ className, ...props }: ComponentProps<"label">) {
-  return <label className={cn("text-sm font-medium leading-none", className)} {...props} />;
+  return <label className={cn("text-sm font-bold leading-none", className)} {...props} />;
 }

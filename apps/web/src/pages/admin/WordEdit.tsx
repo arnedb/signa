@@ -1,8 +1,8 @@
 import type { AdminWord, Clip, Schemas } from "@vgt/api-client";
 import { t } from "@vgt/core";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
-import { Archive, ArchiveRestore, ArrowLeft, Scissors, Star, Undo2, Upload } from "lucide-react";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { Archive, ArchiveRestore, ArrowLeft, Scissors, Star, Trash2, Undo2, Upload } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { ErrorView, Field, Spinner } from "@/components/common";
@@ -57,6 +57,7 @@ export function WordEditPage({ wordId }: { wordId: number }) {
         <div className="mt-2 flex flex-wrap items-center gap-3">
           <h1 className="text-2xl font-semibold">{word.data.gloss}</h1>
           <StatusBadge status={word.data.status} />
+          <DeleteWordButton word={word.data} />
         </div>
       </div>
       <div className="grid gap-6 lg:grid-cols-[1fr_22rem]">
@@ -67,6 +68,35 @@ export function WordEditPage({ wordId }: { wordId: number }) {
         <History wordId={wordId} />
       </div>
     </div>
+  );
+}
+
+function DeleteWordButton({ word }: { word: AdminWord }) {
+  const qc = useQueryClient();
+  const navigate = useNavigate();
+  const remove = useMutation({
+    mutationFn: () => unwrap(api.DELETE("/api/v1/admin/words/{word_id}", { params: { path: { word_id: word.id } } })),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["admin", "words"] });
+      void qc.invalidateQueries({ queryKey: ["words"] });
+      void qc.invalidateQueries({ queryKey: ["catalog"] });
+      void qc.invalidateQueries({ queryKey: ["difficult"] });
+      void navigate({ to: "/admin" });
+    },
+  });
+  return (
+    <>
+      <Button
+        size="sm"
+        variant="ghost"
+        className="ml-auto text-destructive hover:bg-berry-soft hover:text-destructive"
+        disabled={remove.isPending}
+        onClick={() => window.confirm(t.admin.deleteWordConfirm(word.gloss)) && remove.mutate()}
+      >
+        <Trash2 aria-hidden /> {t.admin.deleteWord}
+      </Button>
+      {remove.isError && <Alert tone="destructive" className="w-full">{errorMessage(remove.error)}</Alert>}
+    </>
   );
 }
 
@@ -124,7 +154,7 @@ function WordForm({ word }: { word: AdminWord }) {
             {(p) => <Input {...p} type="number" min={0} value={form.lesson} onChange={set("lesson")} />}
           </Field>
           <Field label={t.practice.list}>
-            {(p) => <Input {...p} placeholder="1.1" value={form.list_number} onChange={set("list_number")} />}
+            {(p) => <Input {...p} placeholder="x.y" value={form.list_number} onChange={set("list_number")} />}
           </Field>
           <Field label={t.admin.position}>
             {(p) => <Input {...p} type="number" value={form.position} onChange={set("position")} />}

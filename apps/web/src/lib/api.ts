@@ -1,6 +1,6 @@
 import { ApiError, createApi, type Me, unwrap } from "@vgt/api-client";
 import { translateError } from "@vgt/core";
-import { QueryClient, queryOptions } from "@tanstack/react-query";
+import { infiniteQueryOptions, QueryClient, queryOptions } from "@tanstack/react-query";
 
 export const api = createApi();
 export { ApiError, unwrap };
@@ -51,6 +51,19 @@ export const wordsQuery = (filter: WordFilter) =>
   queryOptions({
     queryKey: ["words", filter],
     queryFn: () => unwrap(api.GET("/api/v1/words", { params: { query: filter } })),
+  });
+
+/** How many words the dictionary loads at a time. */
+export const WORDS_PAGE = 30;
+
+/** Words in pages of {@link WORDS_PAGE}, for lists that load more as you scroll. */
+export const wordPagesQuery = (filter: WordFilter) =>
+  infiniteQueryOptions({
+    queryKey: ["words", "pages", filter],
+    queryFn: ({ pageParam }) =>
+      unwrap(api.GET("/api/v1/words", { params: { query: { ...filter, limit: WORDS_PAGE, offset: pageParam } } })),
+    initialPageParam: 0,
+    getNextPageParam: (last, pages) => (last.length < WORDS_PAGE ? undefined : pages.length * WORDS_PAGE),
   });
 
 export const wordQuery = (id: number) =>

@@ -22,12 +22,12 @@ export function Dialog({
   return (
     <D.Root open={open} onOpenChange={onOpenChange}>
       <D.Portal>
-        <D.Overlay className="fixed inset-0 z-40 bg-black/40" />
+        <D.Overlay className="fixed inset-0 z-40 bg-[oklch(0.24_0.04_275/0.45)] backdrop-blur-[2px]" />
         <D.Content
-          className={`fixed top-1/2 left-1/2 z-50 w-[calc(100%-2rem)] ${wide ? "max-h-[calc(100dvh-2rem)] max-w-3xl overflow-y-auto" : "max-w-md"} -translate-x-1/2 -translate-y-1/2 rounded-lg border bg-card p-6 shadow-lg`}
+          className={`fixed top-1/2 left-1/2 z-50 w-[calc(100%-2rem)] ${wide ? "max-h-[calc(100dvh-2rem)] max-w-3xl overflow-y-auto" : "max-w-md"} -translate-x-1/2 -translate-y-1/2 sticker animate-pop-in rounded-lg bg-card p-6`}
           {...(description ? {} : { "aria-describedby": undefined })}
         >
-          <D.Title className="pr-8 text-lg font-semibold">{title}</D.Title>
+          <D.Title className="pr-8 font-display text-xl font-semibold">{title}</D.Title>
           {description && (
             <D.Description className="mt-1 text-sm text-muted-foreground">{description}</D.Description>
           )}

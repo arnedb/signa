@@ -195,13 +195,34 @@ class Catalog(BaseModel):
 class WordCreate(BaseModel):
     gloss: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
     year: int = Field(ge=1, le=10)
-    lesson: int | None = Field(None, ge=0, le=100)
+    # Every new word belongs to a lesson; it is not derived from the list number.
+    lesson: int = Field(ge=0, le=100)
     list_number: Annotated[str, StringConstraints(strip_whitespace=True, max_length=16)] | None = (
         None
     )
     position: int = 0
     notes: str = ""
     status: WordStatus = WordStatus.draft
+
+
+class WordBulkChanges(BaseModel):
+    """The fields that make sense to set on many words at once."""
+
+    year: int | None = Field(None, ge=1, le=10)
+    lesson: int | None = Field(None, ge=0, le=100)
+    list_number: Annotated[str, StringConstraints(strip_whitespace=True, max_length=16)] | None = (
+        None
+    )
+    status: WordStatus | None = None
+
+
+class WordIds(BaseModel):
+    ids: list[int] = Field(min_length=1, max_length=1000)
+
+
+class WordBulkUpdate(BaseModel):
+    ids: list[int] = Field(min_length=1, max_length=1000)
+    changes: WordBulkChanges
 
 
 class WordUpdate(BaseModel):
@@ -294,8 +315,10 @@ class RecordingItem(Segment):
 
 class RecordingApplyIn(BaseModel):
     items: list[RecordingItem] = Field(min_length=1)
-    # Where new words (items with a gloss) go. The lesson follows from the list number.
+    # Where new words (items with a gloss) go. Without a lesson, it follows from the list number
+    # ("3.2" is lesson 3); new words need one or the other.
     year: int | None = Field(None, ge=1, le=10)
+    lesson: int | None = Field(None, ge=0, le=100)
     list_number: Annotated[str, StringConstraints(strip_whitespace=True, max_length=16)] | None = (
         None
     )

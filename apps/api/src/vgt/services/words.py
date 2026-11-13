@@ -3,6 +3,7 @@ from typing import Any
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
+from vgt import media
 from vgt.models import Clip, User, Word, WordEvent
 from vgt.schemas import AdminWordOut, ClipOut, WordOut
 
@@ -86,6 +87,17 @@ def apply_changes(db: Session, word: Word, changes: dict[str, Any], user: User |
         word.updated_by = user.id if user else None
         log(db, word, user, "update", diff)
     return diff
+
+
+def delete_words(db: Session, words: list[Word]) -> None:
+    """Delete words for good: their clips, history and practice results go with them (the
+    database cascades), and their video files are removed after the commit."""
+    files = [f for w in words for c in w.clips for f in (c.file, c.thumb) if f]
+    for word in words:
+        db.delete(word)
+    db.commit()
+    for rel in files:
+        media.media_path(rel).unlink(missing_ok=True)
 
 
 def set_primary(word: Word, clip: Clip) -> None:

@@ -116,6 +116,9 @@ def _create_words(db: DB, body: RecordingApplyIn, ctx: Teacher) -> dict[int, Wor
     if body.year is None:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Choose a year for the new words")
     list_number = body.list_number or None
+    lesson = body.lesson if body.lesson is not None else lesson_of(list_number)
+    if lesson is None:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Choose a lesson for the new words")
     seen: set[str] = set()
     for _i, gloss in new:
         if _key(gloss) in seen:
@@ -144,7 +147,7 @@ def _create_words(db: DB, body: RecordingApplyIn, ctx: Teacher) -> dict[int, Wor
             org_id=ctx.org.id,
             gloss=gloss,
             year=body.year,
-            lesson=lesson_of(list_number),
+            lesson=lesson,
             list_number=list_number,
             position=position,
             status=WordStatus.published if body.publish else WordStatus.draft,

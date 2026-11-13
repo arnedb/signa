@@ -2,17 +2,18 @@ import type { AdminWord, Schemas } from "@vgt/api-client";
 import { t } from "@vgt/core";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { ArrowLeft, ListPlus, Pause, Play, Plus, RefreshCw, Scissors, Trash2, Upload, Wand2 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ArrowLeft, Pause, Play, Plus, RefreshCw, Scissors, Trash2, Upload } from "lucide-react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 
 import { ErrorView, Field, PageTitle, Spinner } from "@/components/common";
 import { Timeline, isTyping, useVideoTime } from "@/components/Timeline";
 import { Button } from "@/components/ui/button";
 import { Alert, Badge, Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input, Select } from "@/components/ui/input";
+import { Input, Label, Select } from "@/components/ui/input";
 import { api, catalogQuery, errorMessage, unwrap } from "@/lib/api";
+import { useLessonField } from "@/lib/lesson";
 import { isRunning, uploadFile } from "@/lib/upload";
-import { formatDate, formatSeconds } from "@/lib/utils";
+import { cn, formatDate, formatSeconds } from "@/lib/utils";
 import { adminWordsQuery } from "@/pages/admin/Words";
 
 type Recording = Schemas["RecordingOut"];
@@ -104,15 +105,12 @@ export function RecordingsPage() {
 
 interface Row extends Segment {
   key: number;
-  wordId: number | null;
-  /** Not null: the segment becomes a new word with this name. */
-  gloss: string | null;
-  mode: "replace" | "extra";
+  /** The word this segment shows. Empty: skip it. See ``resolve`` for what a name becomes. */
+  text: string;
 }
 
 let rowKey = 0;
-const toRows = (segments: Segment[]): Row[] =>
-  segments.map((s) => ({ ...s, key: ++rowKey, wordId: null, gloss: null, mode: "replace" }));
+const toRows = (segments: Segment[]): Row[] => segments.map((s) => ({ ...s, key: ++rowKey, text: "" }));
 
 type Method = NonNullable<Recording["method"]>;
 
@@ -120,6 +118,7 @@ export function RecordingPage({ recordingId }: { recordingId: number }) {
   const qc = useQueryClient();
   const rec = useQuery(recordingQuery(recordingId));
   const [method, setMethod] = useState<Method | null>(null);
+  const formId = useId();
   const splitAgain = useMutation({
     mutationFn: (m: Method) =>
       unwrap(
@@ -160,24 +159,28 @@ export function RecordingPage({ recordingId }: { recordingId: number }) {
       {r.status === "done" && r.source_url && (
         <>
           <form
-            className="flex flex-wrap items-end gap-3"
+            className="flex max-w-2xl flex-col gap-1.5"
             onSubmit={(e) => {
               e.preventDefault();
               if (window.confirm(t.admin.splitAgainConfirm)) splitAgain.mutate(chosen);
             }}
           >
-            <Field label={t.admin.splitMethod} hint={t.admin.splitMethodHint} className="max-w-md">
-              {(p) => (
-                <Select {...p} value={chosen} onChange={(e) => setMethod(e.target.value as Method)}>
-                  {(["motion", "freeze"] as const).map((m) => (
-                    <option key={m} value={m}>{t.admin.splitMethods[m]}</option>
-                  ))}
-                </Select>
-              )}
-            </Field>
-            <Button type="submit" variant="outline" disabled={splitAgain.isPending} className="mb-6">
-              <RefreshCw aria-hidden /> {t.admin.splitAgain}
-            </Button>
+            <Label htmlFor={`${formId}-method`}>{t.admin.splitMethod}</Label>
+            <div className="flex flex-wrap items-center gap-3">
+              <Select
+                id={`${formId}-method`}
+                className="w-auto min-w-64 flex-1"
+                value={chosen}
+                onChange={(e) => setMethod(e.target.value as Method)}
+              >
+                {(["motion", "freeze"] as const).map((m) => (
+                  <option key={m} value={m}>{t.admin.splitMethods[m]}</option>
+                ))}
+              </Select>
+              <Button type="submit" variant="outline" disabled={splitAgain.isPending}>
+                <RefreshCw aria-hidden /> {t.admin.splitAgain}
+              </Button>
+            </div>
           </form>
           {splitAgain.isError && <Alert tone="destructive">{errorMessage(splitAgain.error)}</Alert>}
           <Editor recording={r} />
@@ -192,19 +195,20 @@ const glossKey = (g: string) => g.trim().replace(/\s+/g, " ").toLocaleLowerCase(
 function Editor({ recording }: { recording: Recording }) {
   const qc = useQueryClient();
   const video = useRef<HTMLVideoElement>(null);
-  const stopAt = useRef<number | null>(null);
   const { time, playing } = useVideoTime(video);
   const duration = recording.duration ?? 0;
   const [rows, setRows] = useState<Row[]>(() => toRows(recording.segments));
+  // The segment being edited: its own start and end on the timeline, its details on the right.
+  const [selectedKey, setSelectedKey] = useState<number | null>(() => rows[0]?.key ?? null);
   const [year, setYear] = useState<number>(1);
   const [list, setList] = useState<string>("");
   const [publish, setPublish] = useState(false);
   const catalog = useQuery(catalogQuery);
   const words = useQuery(adminWordsQuery({ year }));
-  const wordsById = useMemo(() => new Map((words.data ?? []).map((w) => [w.id, w])), [words.data]);
   const listNumber = list.trim() || null;
+  const lesson = useLessonField(list);
 
-  // Which existing words share a name with a new word: on this list (refused) or elsewhere.
+  // Existing words of this year by name, to recognise a typed name.
   const byGloss = useMemo(() => {
     const map = new Map<string, AdminWord[]>();
     for (const w of words.data ?? []) {
@@ -213,15 +217,17 @@ function Editor({ recording }: { recording: Recording }) {
     }
     return map;
   }, [words.data]);
-  const conflict = (gloss: string | null) => {
-    if (!gloss?.trim()) return null;
-    const same = byGloss.get(glossKey(gloss)) ?? [];
-    if (same.some((w) => (w.list_number ?? null) === listNumber)) return { onList: true, text: t.admin.existsOnList };
-    if (same.length) {
-      const lists = [...new Set(same.map((w) => t.app.list(w.list_number ?? "—")))].join(", ");
-      return { onList: false, text: t.admin.existsElsewhere(lists) };
-    }
-    return null;
+  /**
+   * What a typed name becomes: the word with that name on the chosen list gets this video
+   * (in place of its old one); any other name becomes a new word on the list.
+   */
+  const resolve = (text: string): Resolved => {
+    if (!text.trim()) return { kind: "skip" };
+    const same = byGloss.get(glossKey(text)) ?? [];
+    const onList = same.find((w) => (w.list_number ?? null) === listNumber);
+    if (onList) return { kind: "existing", word: onList };
+    const elsewhere = [...new Set(same.map((w) => t.app.list(w.list_number ?? "—")))].join(", ");
+    return { kind: "new", elsewhere: elsewhere || null };
   };
 
   const saveCuts = useMutation({
@@ -241,44 +247,30 @@ function Editor({ recording }: { recording: Recording }) {
           params: { path: { job_id: recording.id } },
           body: {
             year,
+            lesson: lesson.number,
             list_number: listNumber,
             publish,
-            items: rows
-              .filter((r) => r.wordId != null || r.gloss?.trim())
-              .map((r) =>
-                r.gloss != null
-                  ? { start: r.start, end: r.end, gloss: r.gloss.trim() }
-                  : { start: r.start, end: r.end, word_id: r.wordId as number, mode: r.mode },
-              ),
+            items: rows.flatMap((r): { start: number; end: number; word_id?: number; gloss?: string; mode?: "replace" }[] => {
+              const to = resolve(r.text);
+              if (to.kind === "existing") return [{ start: r.start, end: r.end, word_id: to.word.id, mode: "replace" }];
+              if (to.kind === "new") return [{ start: r.start, end: r.end, gloss: r.text.trim() }];
+              return [];
+            }),
           },
         }),
       ),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["admin"] });
       void qc.invalidateQueries({ queryKey: ["catalog"] });
-      // New words are made now: from here on they are existing words.
-      setRows((rs) => rs.map((r) => (r.gloss != null ? { ...r, gloss: null, wordId: null } : r)));
+      // Done: clear the names, so making the videos again cannot add them twice.
+      setRows((rs) => rs.map((r) => ({ ...r, text: "" })));
     },
   });
-
-  useEffect(() => {
-    const v = video.current;
-    if (!v) return;
-    const onTime = () => {
-      if (stopAt.current != null && v.currentTime >= stopAt.current) {
-        v.pause();
-        stopAt.current = null;
-      }
-    };
-    v.addEventListener("timeupdate", onTime);
-    return () => v.removeEventListener("timeupdate", onTime);
-  }, []);
 
   const seek = useCallback(
     (to: number) => {
       const v = video.current;
       if (!v) return;
-      stopAt.current = null;
       v.currentTime = Math.max(0, Math.min(duration || v.duration || 0, to));
     },
     [duration],
@@ -286,32 +278,47 @@ function Editor({ recording }: { recording: Recording }) {
   const toggle = useCallback(() => {
     const v = video.current;
     if (!v) return;
-    stopAt.current = null;
     if (v.paused) void v.play();
     else v.pause();
   }, []);
-  const playSegment = (s: Segment) => {
-    const v = video.current;
-    if (!v) return;
-    v.currentTime = s.start;
-    stopAt.current = s.end;
-    void v.play();
-  };
-  const now = () => Math.round((video.current?.currentTime ?? 0) * 100) / 100;
   const update = (key: number, patch: Partial<Row>) =>
     setRows((rs) => rs.map((r) => (r.key === key ? { ...r, ...patch } : r)));
   const splitAt = useCallback(() => {
     const at = Math.round((video.current?.currentTime ?? 0) * 100) / 100;
+    // Made outside the updater: React may call an updater twice.
+    const key = ++rowKey;
     setRows((rs) => {
       const i = rs.findIndex((r) => r.start < at && at < r.end);
       if (i < 0) {
-        const added: Row = { start: at, end: Math.min(at + 1.5, duration || at + 1.5), key: ++rowKey, wordId: null, gloss: null, mode: "replace" };
+        const added: Row = { start: at, end: Math.min(at + 1.5, duration || at + 1.5), key, text: "" };
         return [...rs, added].sort((a, b) => a.start - b.start);
       }
       const r = rs[i] as Row;
-      return [...rs.slice(0, i), { ...r, end: at }, { ...r, key: ++rowKey, start: at, wordId: null, gloss: null }, ...rs.slice(i + 1)];
+      return [...rs.slice(0, i), { ...r, end: at }, { ...r, key, start: at, text: "" }, ...rs.slice(i + 1)];
     });
+    setSelectedKey(key);
   }, [duration]);
+  const remove = useCallback(
+    (key: number) => {
+      const i = rows.findIndex((r) => r.key === key);
+      const neighbour = rows[i + 1] ?? rows[i - 1];
+      setRows((rs) => rs.filter((r) => r.key !== key));
+      setSelectedKey(neighbour?.key ?? null);
+    },
+    [rows],
+  );
+  const select = (row: Row) => {
+    setSelectedKey(row.key);
+    seek(row.start);
+  };
+  /** The word a segment is for: a new word's name, or the chosen existing word. */
+  const nameOf = (row: Row) => row.text.trim();
+
+  // Set when Enter moves on to the next segment: its word field then takes the focus.
+  const focusWord = useRef(false);
+  useEffect(() => {
+    focusWord.current = false;
+  });
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -319,6 +326,11 @@ function Editor({ recording }: { recording: Recording }) {
       const v = video.current;
       if (!v) return;
       const step = e.shiftKey ? 5 : 0.5;
+      if ((e.key === "Backspace" || e.key === "Delete") && selectedKey != null) {
+        e.preventDefault();
+        remove(selectedKey);
+        return;
+      }
       switch (e.code) {
         case "Space": e.preventDefault(); toggle(); break;
         case "KeyS": e.preventDefault(); splitAt(); break;
@@ -328,42 +340,53 @@ function Editor({ recording }: { recording: Recording }) {
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [seek, toggle, splitAt]);
+  }, [seek, toggle, splitAt, selectedKey, remove]);
 
-  const suggest = () => {
-    const candidates = (words.data ?? []).filter((w) => !listNumber || w.list_number === listNumber);
-    setRows((rs) => rs.map((r, i) => ({ ...r, wordId: candidates[i]?.id ?? null, gloss: null })));
-  };
-  const allNew = () =>
-    setRows((rs) => rs.map((r) => (r.wordId == null && r.gloss == null ? { ...r, gloss: "" } : r)));
-
-  const yearData = catalog.data?.years.find((y) => y.year === year);
-  const newRows = rows.filter((r) => r.gloss != null);
-  const unnamed = newRows.filter((r) => !r.gloss?.trim()).length;
-  const blocked = newRows.some((r) => conflict(r.gloss)?.onList);
-  const ready = rows.filter((r) => r.wordId != null || r.gloss?.trim()).length;
-  const active = rows.find((r) => r.start <= time && time < r.end)?.key ?? null;
+  const resolved = rows.map((r) => resolve(r.text));
+  const hasNew = resolved.some((r) => r.kind === "new");
+  const ready = resolved.filter((r) => r.kind !== "skip").length;
+  const selectedIndex = rows.findIndex((r) => r.key === selectedKey);
+  const selected = rows[selectedIndex];
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[minmax(0,28rem)_1fr]">
-      <div className="flex flex-col gap-3 xl:sticky xl:top-32 xl:self-start">
+    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)]">
+      <div className="flex flex-col gap-3 lg:sticky lg:top-32 lg:self-start">
         <video
           ref={video}
           src={recording.source_url ?? undefined}
           muted
           playsInline
           preload="auto"
-          className="aspect-[4/3] w-full rounded-lg bg-black"
+          className="aspect-[4/3] max-h-[38dvh] w-full rounded-lg bg-black object-contain"
           onClick={toggle}
         />
         <Timeline
           label={t.admin.timeline}
           duration={duration}
           time={time}
-          ranges={rows.map((r, i) => ({ key: r.key, start: r.start, end: r.end, label: String(i + 1) }))}
-          activeKey={active}
+          ranges={rows.map((r, i) => ({ key: r.key, start: r.start, end: r.end, label: String(i + 1), name: nameOf(r) }))}
+          activeKey={selectedKey}
           onSeek={seek}
-          onRangeClick={(r) => playSegment(r)}
+          onRangeClick={(r) => setSelectedKey(r.key as number)}
+          edit={{
+            selectedKey,
+            min: 0.1,
+            step: 0.05,
+            onChange: (next) => {
+              const byKey = new Map(next.map((n) => [n.key, n]));
+              setRows((rs) =>
+                rs.map((r) => {
+                  const n = byKey.get(r.key);
+                  return n ? { ...r, start: n.start, end: n.end } : r;
+                }),
+              );
+            },
+            describe: (h, sorted) => {
+              const names = h.around.map((i) => sorted[i]?.label ?? "");
+              if (h.edges.length === 2) return t.admin.boundaryBetween(names[0]!, names[1]!);
+              return h.edges[0]!.which === "start" ? t.admin.segmentStartOf(names[0]!) : t.admin.segmentEndOf(names[0]!);
+            },
+          }}
         />
         <div className="flex flex-wrap items-center gap-2">
           <Button size="icon" aria-label={playing ? t.admin.pause : t.admin.play} onClick={toggle}>
@@ -379,8 +402,41 @@ function Editor({ recording }: { recording: Recording }) {
             {t.admin.saveCuts}
           </Button>
         </div>
+        {rows.length > 0 && (
+          <ol aria-label={t.admin.segmentList} className="flex flex-wrap gap-1.5">
+            {rows.map((row, i) => {
+              const name = nameOf(row);
+              const isSelected = row.key === selectedKey;
+              return (
+                <li key={row.key}>
+                  <button
+                    type="button"
+                    aria-pressed={isSelected}
+                    onClick={() => select(row)}
+                    className={cn(
+                      "flex cursor-pointer items-center gap-1.5 rounded-full border-2 py-0.5 pr-2.5 pl-1 text-sm transition-colors",
+                      isSelected ? "border-ink bg-sky text-on-crayon" : "border-ink/20 bg-card hover:border-ink",
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        "flex size-5 items-center justify-center rounded-full text-xs font-bold tabular-nums",
+                        isSelected ? "bg-card text-foreground" : "bg-muted",
+                      )}
+                    >
+                      {i + 1}
+                    </span>
+                    <span className={cn(!name && "text-muted-foreground italic", isSelected && !name && "text-on-crayon/70")}>
+                      {name || t.admin.noWordYet}
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+          </ol>
+        )}
         <p className="text-xs text-muted-foreground">
-          {t.admin.shortcuts}: {t.admin.splitKeys}
+          {t.admin.dragHint} {t.admin.shortcuts}: {t.admin.splitKeys}
         </p>
         {saveCuts.isSuccess && <p className="text-sm text-success">{t.app.saved}</p>}
         {saveCuts.isError && <Alert tone="destructive">{errorMessage(saveCuts.error)}</Alert>}
@@ -392,7 +448,15 @@ function Editor({ recording }: { recording: Recording }) {
             <div className="flex flex-wrap items-end gap-3">
               <Field label={t.practice.year}>
                 {(p) => (
-                  <Select {...p} value={year} onChange={(e) => { setYear(Number(e.target.value)); setList(""); }}>
+                  <Select
+                    {...p}
+                    value={year}
+                    onChange={(e) => {
+                      setYear(Number(e.target.value));
+                      setList("");
+                      lesson.reset();
+                    }}
+                  >
                     {[...new Set([...(catalog.data?.years.map((y) => y.year) ?? []), 1, 2, 3])]
                       .sort((a, b) => a - b)
                       .map((y) => (
@@ -401,66 +465,75 @@ function Editor({ recording }: { recording: Recording }) {
                   </Select>
                 )}
               </Field>
-              <Field label={t.practice.list}>
+              <Field label={t.practice.lesson}>
                 {(p) => (
-                  <>
-                    <Input {...p} className="w-28" list="recording-lists" placeholder="1.1" value={list} onChange={(e) => setList(e.target.value)} />
-                    <datalist id="recording-lists">
-                      {yearData?.lists
-                        .filter((l) => l.list_number)
-                        .map((l) => <option key={l.list_number} value={l.list_number ?? ""} />)}
-                    </datalist>
-                  </>
+                  <Input
+                    {...p}
+                    type="number"
+                    min={0}
+                    max={100}
+                    className="w-20"
+                    autoComplete="off"
+                    value={lesson.value}
+                    onChange={(e) => lesson.set(e.target.value)}
+                  />
                 )}
               </Field>
-              <Button variant="secondary" onClick={suggest} disabled={!words.data}>
-                <Wand2 aria-hidden /> {t.admin.suggest}
-              </Button>
-              <Button variant="outline" onClick={allNew}>
-                <ListPlus aria-hidden /> {t.admin.allNew}
-              </Button>
+              <Field label={t.practice.list}>
+                {(p) => (
+                  <Input {...p} className="w-28" autoComplete="off" placeholder="x.y" value={list} onChange={(e) => setList(e.target.value)} />
+                )}
+              </Field>
             </div>
-            <p className="text-xs text-muted-foreground">{t.admin.listHint}</p>
-            {newRows.length > 0 && (
-              <div className="flex flex-col gap-2 rounded-md bg-muted p-3 text-sm">
-                <p>{t.admin.newWordsGoTo(`${t.app.year(year)} · ${t.app.list(listNumber ?? "—")}`)}</p>
-                <label className="flex items-center gap-2">
-                  <input type="checkbox" checked={publish} onChange={(e) => setPublish(e.target.checked)} />
-                  {t.admin.publishNew}
-                </label>
-              </div>
-            )}
           </CardContent>
         </Card>
 
-        <ol className="flex flex-col gap-3">
-          {rows.map((row, i) => (
-            <SegmentRow
-              key={row.key}
-              index={i}
-              row={row}
-              active={row.key === active}
-              words={words.data ?? []}
-              word={row.wordId != null ? wordsById.get(row.wordId) : undefined}
-              conflict={conflict(row.gloss)}
-              onChange={(patch) => update(row.key, patch)}
-              onRemove={() => setRows((rs) => rs.filter((r) => r.key !== row.key))}
-              onPlay={() => playSegment(row)}
-              now={now}
-            />
-          ))}
-        </ol>
+        {selected ? (
+          <SegmentRow
+            key={selected.key}
+            index={selectedIndex}
+            row={selected}
+            resolved={resolve(selected.text)}
+            focus={focusWord.current}
+            onChange={(text) => update(selected.key, { text })}
+            onRemove={() => remove(selected.key)}
+            onNext={() => {
+              const next = rows[selectedIndex + 1];
+              if (!next) return;
+              focusWord.current = true;
+              select(next);
+            }}
+          />
+        ) : (
+          rows.length > 0 && <p className="text-sm text-muted-foreground">{t.admin.pickSegment}</p>
+        )}
         <Button variant="outline" className="self-start" onClick={splitAt}>
           <Plus aria-hidden /> {t.admin.addSegment}
         </Button>
 
+        {/* Only matters when there are new words: it belongs with making the videos. */}
+        {hasNew && (
+          <div className="flex flex-col gap-2 rounded-md bg-muted p-3 text-sm">
+            <p>
+              {t.admin.newWordsGoTo(
+                [t.app.year(year), lesson.number != null ? t.app.lesson(lesson.number) : null, t.app.list(listNumber ?? "—")]
+                  .filter(Boolean)
+                  .join(" · "),
+              )}
+            </p>
+            {lesson.number == null && <p className="font-bold text-destructive">{t.admin.needsLesson}</p>}
+            <label className="flex items-center gap-2">
+              <input type="checkbox" checked={publish} onChange={(e) => setPublish(e.target.checked)} />
+              {t.admin.publishNew}
+            </label>
+          </div>
+        )}
         {apply.isSuccess && <Alert tone="success">{t.admin.applied}</Alert>}
         {apply.isError && <Alert tone="destructive">{errorMessage(apply.error)}</Alert>}
-        {unnamed > 0 && <p className="text-sm text-muted-foreground">{t.admin.needsGloss(unnamed)}</p>}
         <Button
           size="lg"
           className="self-start"
-          disabled={ready === 0 || unnamed > 0 || blocked || apply.isPending}
+          disabled={ready === 0 || (hasNew && lesson.number == null) || apply.isPending}
           onClick={() => apply.mutate()}
         >
           {t.admin.apply(ready)}
@@ -470,121 +543,73 @@ function Editor({ recording }: { recording: Recording }) {
   );
 }
 
-const NEW = "__new__";
+type Resolved = { kind: "skip" } | { kind: "existing"; word: AdminWord } | { kind: "new"; elsewhere: string | null };
 
 function SegmentRow({
   index,
   row,
-  active,
-  words,
-  word,
-  conflict,
+  resolved,
+  focus,
   onChange,
   onRemove,
-  onPlay,
-  now,
+  onNext,
 }: {
   index: number;
   row: Row;
-  active: boolean;
-  words: AdminWord[];
-  word: AdminWord | undefined;
-  conflict: { onList: boolean; text: string } | null;
-  onChange: (patch: Partial<Row>) => void;
+  resolved: Resolved;
+  focus: boolean;
+  onChange: (text: string) => void;
   onRemove: () => void;
-  onPlay: () => void;
-  now: () => number;
+  onNext: () => void;
 }) {
-  const old = word?.clips.find((c) => c.is_primary && !c.archived);
-  const isNew = row.gloss != null;
+  const note =
+    resolved.kind === "existing"
+      ? t.admin.replacesVideo
+      : resolved.kind === "new"
+        ? resolved.elsewhere
+          ? `${t.admin.becomesNewWord} ${t.admin.existsElsewhere(resolved.elsewhere)}`
+          : t.admin.becomesNewWord
+        : null;
   return (
-    <li>
-      <Card className={`flex flex-col gap-3 p-4 ${active ? "border-primary" : ""}`}>
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="font-medium">
-            #{index + 1} · {formatSeconds(row.start)} – {formatSeconds(row.end)}
-            <span className="ml-2 text-xs text-muted-foreground">{(row.end - row.start).toFixed(1)} s</span>
-          </p>
-          <div className="flex gap-1">
-            <Button size="sm" variant="secondary" onClick={onPlay}>
-              <Play aria-hidden /> {t.admin.playSegment}
-            </Button>
-            <Button size="sm" variant="ghost" onClick={onRemove} aria-label={t.admin.removeSegment}>
-              <Trash2 aria-hidden />
-            </Button>
-          </div>
+    <section aria-label={t.admin.segmentTitle(index + 1)}>
+      <Card className="flex flex-col gap-3 p-4">
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="flex items-center gap-2 font-display text-lg font-semibold">
+            <span className="flex size-8 items-center justify-center rounded-full border-2 border-ink bg-sky text-on-crayon tabular-nums">
+              {index + 1}
+            </span>
+            {t.admin.segmentTitle(index + 1)}
+          </h2>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="text-destructive hover:bg-berry-soft hover:text-destructive"
+            title={`${t.admin.removeSegment} (Backspace)`}
+            onClick={onRemove}
+          >
+            <Trash2 aria-hidden /> {t.admin.removeSegment}
+          </Button>
         </div>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div className="flex items-end gap-2">
-            <Field label={t.admin.start} className="flex-1">
-              {(p) => <Input {...p} type="number" step="0.05" min={0} value={row.start} onChange={(e) => onChange({ start: Number(e.target.value) })} />}
-            </Field>
-            <Button size="sm" variant="outline" onClick={() => onChange({ start: now() })}>{t.admin.setStart}</Button>
-          </div>
-          <div className="flex items-end gap-2">
-            <Field label={t.admin.end} className="flex-1">
-              {(p) => <Input {...p} type="number" step="0.05" min={0} value={row.end} onChange={(e) => onChange({ end: Number(e.target.value) })} />}
-            </Field>
-            <Button size="sm" variant="outline" onClick={() => onChange({ end: now() })}>{t.admin.setEnd}</Button>
-          </div>
-        </div>
-        {isNew ? (
-          <div className="flex flex-col gap-1.5">
-            <div className="flex items-end gap-2">
-              <Field label={t.admin.newWordGloss} className="flex-1" error={conflict?.onList ? conflict.text : null} hint={conflict && !conflict.onList ? conflict.text : undefined}>
-                {(p) => (
-                  <Input {...p} autoFocus={row.gloss === ""} value={row.gloss ?? ""} onChange={(e) => onChange({ gloss: e.target.value, wordId: null })} />
-                )}
-              </Field>
-              <Button size="sm" variant="ghost" onClick={() => onChange({ gloss: null })}>
-                {t.admin.existingWord}
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
-            <Field label={t.admin.word}>
-              {(p) => (
-                <Select
-                  {...p}
-                  value={row.wordId ?? ""}
-                  onChange={(e) =>
-                    e.target.value === NEW
-                      ? onChange({ gloss: "", wordId: null })
-                      : onChange({ wordId: e.target.value ? Number(e.target.value) : null })
-                  }
-                >
-                  <option value="">— {t.admin.skip} —</option>
-                  <option value={NEW}>{t.admin.newWordOption}</option>
-                  {words.map((w) => (
-                    <option key={w.id} value={w.id}>
-                      {w.gloss} {w.list_number ? `(${w.list_number})` : ""}
-                    </option>
-                  ))}
-                </Select>
-              )}
-            </Field>
-            <Field label={t.admin.mode}>
-              {(p) => (
-                <Select {...p} value={row.mode} disabled={row.wordId == null} onChange={(e) => onChange({ mode: e.target.value as Row["mode"] })}>
-                  <option value="replace">{t.admin.replace}</option>
-                  <option value="extra">{t.admin.extra}</option>
-                </Select>
-              )}
-            </Field>
-          </div>
-        )}
-        {word && (
-          <div className="flex items-center gap-3 text-sm">
-            <span className="text-muted-foreground">{t.admin.oldClip}:</span>
-            {old ? (
-              <video src={old.url} poster={old.thumb_url ?? undefined} muted loop playsInline controls className="h-24 rounded-md bg-black" />
-            ) : (
-              <span>{t.admin.noOldClip}</span>
-            )}
-          </div>
-        )}
+        <Field label={t.admin.word} hint={note ?? undefined}>
+          {(p) => (
+            <Input
+              {...p}
+              autoFocus={focus}
+              autoComplete="off"
+              spellCheck={false}
+              placeholder={t.admin.skip}
+              value={row.text}
+              onChange={(e) => onChange(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  onNext();
+                }
+              }}
+            />
+          )}
+        </Field>
       </Card>
-    </li>
+    </section>
   );
 }

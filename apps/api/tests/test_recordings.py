@@ -24,7 +24,8 @@ def test_recording_session(
     get_settings.cache_clear()
     words = [
         teacher.post(
-            "/api/v1/admin/words", json={"gloss": g, "year": 1, "list_number": "1.1", "position": i}
+            "/api/v1/admin/words",
+            json={"gloss": g, "year": 1, "lesson": 1, "list_number": "1.1", "position": i},
         ).json()
         for i, g in enumerate(["een", "twee", "drie"])
     ]
@@ -100,7 +101,7 @@ def test_motion_split_handles_camera_noise(teacher: TestClient, noisy_video: Pat
     assert _contains_signs(rec["segments"], signs), rec["segments"]
 
     words = [
-        teacher.post("/api/v1/admin/words", json={"gloss": g, "year": 1}).json()
+        teacher.post("/api/v1/admin/words", json={"gloss": g, "year": 1, "lesson": 1}).json()
         for g in ("een", "twee")
     ]
     items = [{**s, "word_id": w["id"]} for s, w in zip(rec["segments"][:2], words, strict=True)]
@@ -153,7 +154,7 @@ def test_rest_boundaries() -> None:
 def test_apply_creates_new_words(teacher: TestClient, sample_video: Path) -> None:
     existing = teacher.post(
         "/api/v1/admin/words",
-        json={"gloss": "Huis", "year": 2, "list_number": "3.1", "position": 4},
+        json={"gloss": "Huis", "year": 2, "lesson": 3, "list_number": "3.1", "position": 4},
     ).json()
     rec_id = upload(teacher, sample_video)
     segs = teacher.get(f"/api/v1/admin/recordings/{rec_id}").json()["segments"]
@@ -171,7 +172,12 @@ def test_apply_creates_new_words(teacher: TestClient, sample_video: Path) -> Non
     )
     assert r.status_code == 409 and "Huis" in r.json()["detail"]
     dup = [{**seg, "gloss": "auto"}, {**seg, "gloss": "Auto"}]
-    assert teacher.post(url, json={"year": 2, "items": dup}).status_code == 400
+    assert teacher.post(url, json={"year": 2, "lesson": 1, "items": dup}).status_code == 400
+    # New words need a lesson: given, or from a list number like "3.1".
+    r = teacher.post(
+        url, json={"year": 2, "list_number": "extra", "items": [{**seg, "gloss": "x"}]}
+    )
+    assert r.status_code == 400 and "lesson" in r.json()["detail"]
 
     items = [
         {**segs[0], "gloss": "auto"},
@@ -196,8 +202,10 @@ def test_apply_creates_new_words(teacher: TestClient, sample_video: Path) -> Non
     events = teacher.get(f"/api/v1/admin/words/{by_gloss['auto']['id']}/events").json()
     assert [e["action"] for e in events] == ["clip_add", "create"]
 
-    # Published straight away when asked; no list number is fine.
-    r = teacher.post(url, json={"year": 1, "publish": True, "items": [{**seg, "gloss": "boom"}]})
+    # Published straight away when asked; no list number is fine. The given lesson wins.
+    r = teacher.post(
+        url, json={"year": 1, "lesson": 7, "publish": True, "items": [{**seg, "gloss": "boom"}]}
+    )
     jobs.run_pending()
     boom = teacher.get("/api/v1/admin/words", params={"q": "boom"}).json()[0]
-    assert boom["status"] == "published" and boom["list_number"] is None
+    assert boom["status"] == "published" and boom["list_number"] is None and boom["lesson"] == 7

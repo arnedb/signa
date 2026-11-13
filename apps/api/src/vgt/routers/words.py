@@ -5,7 +5,7 @@ from sqlalchemy import Select, func, or_, select
 from sqlalchemy.orm import selectinload
 
 from vgt.deps import DB, Member
-from vgt.models import Word, WordStatus
+from vgt.models import Clip, Word, WordStatus
 from vgt.schemas import Catalog, CatalogList, CatalogYear, WordOut
 from vgt.services.words import word_out
 
@@ -47,16 +47,22 @@ def list_words(
     q: str | None = None,
     ids: Annotated[list[int] | None, Query()] = None,
     with_clip: bool = False,
+    limit: Annotated[int | None, Query(ge=1, le=500)] = None,
+    offset: Annotated[int, Query(ge=0)] = 0,
 ) -> list[WordOut]:
     """Published words of the current school, in course order.
 
-    ``with_clip`` keeps only words that have a clip.
+    ``with_clip`` keeps only words that have a clip. ``limit`` and ``offset`` page through
+    the result; without ``limit`` every matching word is returned.
     """
     stmt = word_query(ctx.org.id, year, lesson, list_number, q, ids).where(
         Word.status == WordStatus.published
     )
-    words = [word_out(w) for w in db.scalars(stmt)]
-    return [w for w in words if w.clips] if with_clip else words
+    if with_clip:
+        stmt = stmt.where(Word.clips.any(Clip.archived.is_(False)))
+    if limit is not None:
+        stmt = stmt.limit(limit).offset(offset)
+    return [word_out(w) for w in db.scalars(stmt)]
 
 
 @router.get("/words/{word_id}", response_model=WordOut)

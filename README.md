@@ -1,6 +1,6 @@
-# vgt-practice
+# Signa
 
-A practice tool for students of Flemish Sign Language (Vlaamse Gebarentaal, VGT):
+Signa (repository: `vgt-practice`) is a practice tool for students of Flemish Sign Language (Vlaamse Gebarentaal, VGT):
 practise the signs from your course, by year, lesson or list.
 
 - **Students** join their group with an invite link, practise in both directions
