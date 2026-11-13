@@ -64,7 +64,7 @@ def test_teacher_cannot_reach_other_school(
     )
     assert r.status_code == 404
     # A new word belongs to the teacher's school.
-    r = teacher.post("/api/v1/admin/words", json={"gloss": "auto", "year": 1})
+    r = teacher.post("/api/v1/admin/words", json={"gloss": "auto", "year": 1, "lesson": 1})
     db.expire_all()
     assert db.get(Word, r.json()["id"]).org_id == org.id  # type: ignore[union-attr]
 

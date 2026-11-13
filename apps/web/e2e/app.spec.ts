@@ -31,7 +31,7 @@ test("practise a lesson with the keyboard and repeat the missed words", async ({
   // A fixed direction: the default ("mixed") picks one at random for each word.
   await page.getByText("Gebaar → woord").click();
   await page.getByText("Lesvolgorde").click();
-  await page.getByRole("button", { name: "Start (13)" }).click();
+  await page.getByRole("button", { name: "Start (13 woorden)" }).click();
 
   await expect(page.getByText("1 van 13")).toBeVisible();
   // The answers are saved when the round is done; wait for that before opening the difficult words.

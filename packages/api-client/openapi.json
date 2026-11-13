@@ -1,7 +1,7 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "vgt-practice API",
+    "title": "Signa API",
     "version": "0.1.0"
   },
   "paths": {
@@ -539,7 +539,7 @@
           "words"
         ],
         "summary": "List Words",
-        "description": "Published words of the current school, in course order.\n\n``with_clip`` keeps only words that have a clip.",
+        "description": "Published words of the current school, in course order.\n\n``with_clip`` keeps only words that have a clip. ``limit`` and ``offset`` page through\nthe result; without ``limit`` every matching word is returned.",
         "operationId": "list_words",
         "parameters": [
           {
@@ -633,6 +633,35 @@
               "type": "boolean",
               "default": false,
               "title": "With Clip"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "maximum": 500,
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
             }
           }
         ],
@@ -999,7 +1028,122 @@
         }
       }
     },
+    "/api/v1/admin/words/bulk": {
+      "post": {
+        "tags": [
+          "admin: words"
+        ],
+        "summary": "Bulk Update Words",
+        "description": "Apply the same changes to many words: all of them, or none.\n\nEach word gets its own history event, so a change can still be undone word by word.",
+        "operationId": "admin_bulk_update_words",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WordBulkUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AdminWordOut"
+                  },
+                  "type": "array",
+                  "title": "Response Admin Bulk Update Words"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/words/bulk-delete": {
+      "post": {
+        "tags": [
+          "admin: words"
+        ],
+        "summary": "Bulk Delete Words",
+        "description": "Delete many words for good: all of them, or none (when one is not in this school).",
+        "operationId": "admin_bulk_delete_words",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WordIds"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/admin/words/{word_id}": {
+      "delete": {
+        "tags": [
+          "admin: words"
+        ],
+        "summary": "Delete Word",
+        "description": "Delete a word for good, with its videos, history and practice results.",
+        "operationId": "admin_delete_word",
+        "parameters": [
+          {
+            "name": "word_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Word Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
       "get": {
         "tags": [
           "admin: words"
@@ -4029,6 +4173,19 @@
             ],
             "title": "Year"
           },
+          "lesson": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 100.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lesson"
+          },
           "list_number": {
             "anyOf": [
               {
@@ -4587,6 +4744,83 @@
         ],
         "title": "ValidationError"
       },
+      "WordBulkChanges": {
+        "properties": {
+          "year": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 10.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Year"
+          },
+          "lesson": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 100.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lesson"
+          },
+          "list_number": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 16
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "List Number"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WordStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "title": "WordBulkChanges",
+        "description": "The fields that make sense to set on many words at once."
+      },
+      "WordBulkUpdate": {
+        "properties": {
+          "ids": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "maxItems": 1000,
+            "minItems": 1,
+            "title": "Ids"
+          },
+          "changes": {
+            "$ref": "#/components/schemas/WordBulkChanges"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ids",
+          "changes"
+        ],
+        "title": "WordBulkUpdate"
+      },
       "WordCreate": {
         "properties": {
           "gloss": {
@@ -4602,16 +4836,9 @@
             "title": "Year"
           },
           "lesson": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "maximum": 100.0,
-                "minimum": 0.0
-              },
-              {
-                "type": "null"
-              }
-            ],
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": 0.0,
             "title": "Lesson"
           },
           "list_number": {
@@ -4644,7 +4871,8 @@
         "type": "object",
         "required": [
           "gloss",
-          "year"
+          "year",
+          "lesson"
         ],
         "title": "WordCreate"
       },
@@ -4698,6 +4926,24 @@
           "user"
         ],
         "title": "WordEventOut"
+      },
+      "WordIds": {
+        "properties": {
+          "ids": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "maxItems": 1000,
+            "minItems": 1,
+            "title": "Ids"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ids"
+        ],
+        "title": "WordIds"
       },
       "WordOut": {
         "properties": {

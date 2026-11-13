@@ -92,31 +92,36 @@ export function SchoolsPage() {
                   <td className="hidden px-3 py-2 text-muted-foreground sm:table-cell">
                     {t.admin.memberCount(s.member_count)} · {t.admin.groupCount(s.group_count)} · {t.app.words(s.word_count)}
                   </td>
-                  <td className="px-3 py-2 text-right whitespace-nowrap">
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      aria-label={`${t.admin.rename}: ${s.name}`}
-                      onClick={() => {
-                        const name = window.prompt(t.admin.newName, s.name)?.trim();
-                        if (name && name !== s.name) update.mutate({ id: s.id, body: { name } });
-                      }}
-                    >
-                      <Pencil aria-hidden />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() =>
-                        (!s.active || window.confirm(t.admin.deactivateSchoolConfirm(s.name))) &&
-                        update.mutate({ id: s.id, body: { active: !s.active } })
-                      }
-                    >
-                      <Power className="sm:hidden" aria-hidden />
-                      <span className="sr-only sm:not-sr-only">
-                        {s.active ? t.admin.deactivateSchool : t.admin.activateSchool}
-                      </span>
-                    </Button>
+                  <td className="px-3 py-2">
+                    <div className="flex justify-end gap-1 whitespace-nowrap">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        aria-label={`${t.admin.rename}: ${s.name}`}
+                        onClick={() => {
+                          const name = window.prompt(t.admin.newName, s.name)?.trim();
+                          if (name && name !== s.name) update.mutate({ id: s.id, body: { name } });
+                        }}
+                      >
+                        <Pencil aria-hidden /> {t.admin.rename}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className={
+                          s.active
+                            ? "text-destructive hover:bg-berry-soft hover:text-destructive"
+                            : "text-success hover:bg-mint-soft hover:text-success"
+                        }
+                        aria-label={`${s.active ? t.admin.deactivateSchool : t.admin.activateSchool}: ${s.name}`}
+                        onClick={() =>
+                          (!s.active || window.confirm(t.admin.deactivateSchoolConfirm(s.name))) &&
+                          update.mutate({ id: s.id, body: { active: !s.active } })
+                        }
+                      >
+                        <Power aria-hidden /> {s.active ? t.admin.deactivateSchool : t.admin.activateSchool}
+                      </Button>
+                    </div>
                   </td>
                 </tr>
               ))}

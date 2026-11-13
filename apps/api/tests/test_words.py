@@ -1,10 +1,12 @@
 from pathlib import Path
 
 from fastapi.testclient import TestClient
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from vgt import jobs
-from vgt.models import Organisation, Word, WordStatus
+from tests.conftest import make_org
+from vgt import jobs, media
+from vgt.models import Clip, Direction, Organisation, Result, User, Word, WordEvent, WordStatus
 
 
 def _create(client: TestClient, **kw) -> dict:
@@ -33,6 +35,125 @@ def test_draft_publish_and_catalog(teacher: TestClient, db: Session) -> None:
     cat = teacher.get("/api/v1/catalog").json()["years"]
     assert [(y["year"], y["count"], y["lessons"]) for y in cat] == [(1, 2, [2]), (2, 1, [1])]
     assert [item["list_number"] for item in cat[0]["lists"]] == ["2.1", "2.2"]
+
+
+def test_words_are_paged(teacher: TestClient) -> None:
+    for i, gloss in enumerate(["a", "b", "c", "d", "e"]):
+        _create(teacher, gloss=gloss, position=i, status="published")
+    page = lambda q: [x["gloss"] for x in teacher.get(f"/api/v1/words?{q}").json()]  # noqa: E731
+    assert page("limit=2") == ["a", "b"]
+    assert page("limit=2&offset=2") == ["c", "d"]
+    assert page("limit=2&offset=4") == ["e"]
+    assert page("") == ["a", "b", "c", "d", "e"]
+    assert teacher.get("/api/v1/words?limit=0").status_code == 422
+
+
+def test_new_words_need_a_lesson(teacher: TestClient) -> None:
+    r = teacher.post("/api/v1/admin/words", json={"gloss": "x", "year": 1, "list_number": "2.1"})
+    assert r.status_code == 422
+    # The lesson is its own field: it need not match the list number.
+    assert _create(teacher, gloss="y", lesson=5, list_number="2.1")["lesson"] == 5
+
+
+def test_bulk_update(teacher: TestClient, db: Session) -> None:
+    a = _create(teacher, gloss="a")
+    b = _create(teacher, gloss="b")
+    c = _create(teacher, gloss="c")
+    r = teacher.post(
+        "/api/v1/admin/words/bulk",
+        json={
+            "ids": [a["id"], b["id"]],
+            "changes": {"status": "published", "list_number": "3.1", "lesson": 3},
+        },
+    )
+    assert r.status_code == 200, r.text
+    assert [(w["gloss"], w["status"], w["lesson"], w["list_number"]) for w in r.json()] == [
+        ("a", "published", 3, "3.1"),
+        ("b", "published", 3, "3.1"),
+    ]
+    assert teacher.get(f"/api/v1/admin/words/{c['id']}").json()["status"] == "draft"
+    # Every word gets its own history entry, so it can be undone on its own.
+    events = teacher.get(f"/api/v1/admin/words/{a['id']}/events").json()
+    assert events[0]["action"] == "update"
+    assert events[0]["diff_json"]["status"] == ["draft", "published"]
+    assert teacher.post(f"/api/v1/admin/events/{events[0]['id']}/undo").json()["status"] == "draft"
+    assert teacher.get(f"/api/v1/admin/words/{b['id']}").json()["status"] == "published"
+
+
+def test_bulk_update_is_all_or_nothing(teacher: TestClient, db: Session) -> None:
+    a = _create(teacher, gloss="a")
+    other = make_org(db, "other", "Other")
+    foreign = Word(gloss="x", year=1, org_id=other.id, status=WordStatus.draft)
+    db.add(foreign)
+    db.commit()
+    body = {"ids": [a["id"], foreign.id], "changes": {"status": "published"}}
+    assert teacher.post("/api/v1/admin/words/bulk", json=body).status_code == 404
+    assert teacher.get(f"/api/v1/admin/words/{a['id']}").json()["status"] == "draft"
+    empty = {"ids": [a["id"]], "changes": {}}
+    assert teacher.post("/api/v1/admin/words/bulk", json=empty).status_code == 422
+    assert (
+        teacher.post(
+            "/api/v1/admin/words/bulk", json={"ids": [], "changes": {"year": 2}}
+        ).status_code
+        == 422
+    )
+
+
+def test_students_cannot_bulk_update(student: TestClient) -> None:
+    r = student.post(
+        "/api/v1/admin/words/bulk", json={"ids": [1], "changes": {"status": "published"}}
+    )
+    assert r.status_code == 403
+
+
+def test_delete_word_removes_everything(
+    teacher: TestClient, db: Session, sample_video: Path
+) -> None:
+    w = _create(teacher, status="published")
+    keep = _create(teacher, gloss="blijft")
+    with sample_video.open("rb") as f:
+        r = teacher.post(
+            f"/api/v1/admin/words/{w['id']}/clips",
+            files={"file": ("a.mp4", f, "video/mp4")},
+            data={"mode": "replace"},
+        )
+    assert r.status_code == 202 and jobs.run_pending() == 1
+    clip = db.scalars(select(Clip).where(Clip.word_id == w["id"])).one()
+    files = [media.media_path(clip.file), media.media_path(clip.thumb or "")]
+    assert all(p.is_file() for p in files)
+    user_id = db.scalars(select(User.id).where(User.username == "teacher1")).one()
+    db.add(Result(user_id=user_id, word_id=w["id"], direction=Direction.w2s, correct=False))
+    db.commit()
+
+    assert teacher.delete(f"/api/v1/admin/words/{w['id']}").status_code == 204
+    db.expire_all()
+    assert teacher.get(f"/api/v1/admin/words/{w['id']}").status_code == 404
+    assert db.scalars(select(Clip).where(Clip.word_id == w["id"])).all() == []
+    assert db.scalars(select(WordEvent).where(WordEvent.word_id == w["id"])).all() == []
+    assert db.scalars(select(Result).where(Result.word_id == w["id"])).all() == []
+    assert not any(p.exists() for p in files)
+    assert teacher.get(f"/api/v1/admin/words/{keep['id']}").status_code == 200
+    assert teacher.delete(f"/api/v1/admin/words/{w['id']}").status_code == 404
+
+
+def test_bulk_delete_is_all_or_nothing(teacher: TestClient, db: Session) -> None:
+    a = _create(teacher, gloss="a")
+    b = _create(teacher, gloss="b")
+    other = make_org(db, "other2", "Other")
+    foreign = Word(gloss="x", year=1, org_id=other.id, status=WordStatus.draft)
+    db.add(foreign)
+    db.commit()
+    url = "/api/v1/admin/words/bulk-delete"
+    assert teacher.post(url, json={"ids": [a["id"], foreign.id]}).status_code == 404
+    assert teacher.get(f"/api/v1/admin/words/{a['id']}").status_code == 200
+    assert teacher.post(url, json={"ids": [a["id"], b["id"]]}).status_code == 204
+    assert teacher.get("/api/v1/admin/words").json() == []
+    assert db.get(Word, foreign.id) is not None
+
+
+def test_students_cannot_delete(student: TestClient) -> None:
+    assert student.delete("/api/v1/admin/words/1").status_code == 403
+    assert student.post("/api/v1/admin/words/bulk-delete", json={"ids": [1]}).status_code == 403
 
 
 def test_history_and_undo(teacher: TestClient) -> None:

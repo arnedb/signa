@@ -86,7 +86,7 @@ def create_app(run_worker: bool | None = None) -> FastAPI:
             worker.stop()
 
     app = FastAPI(
-        title="vgt-practice API",
+        title="Signa API",
         version=__version__,
         lifespan=lifespan,
         generate_unique_id_function=_operation_id,

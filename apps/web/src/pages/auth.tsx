@@ -13,15 +13,22 @@ import { ApiError, api, errorMessage, meQuery, unwrap } from "@/lib/api";
 
 function AuthShell({ children }: { children: ReactNode }) {
   return (
-    <main id="main" className="flex min-h-dvh flex-col items-center justify-center gap-6 px-4 py-10">
-      <div className="flex items-center gap-3">
-        <img src="/favicon.svg" alt="" className="size-10" />
+    <main id="main" className="relative flex min-h-dvh flex-col items-center justify-center gap-6 overflow-hidden px-4 py-10">
+      {/* Decorative blobs of colour behind the card. */}
+      <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
+        <span className="absolute top-[8%] left-[6%] size-40 rounded-full bg-sun opacity-60 blur-2xl" />
+        <span className="absolute top-[30%] right-[4%] size-52 rounded-full bg-sky opacity-50 blur-2xl" />
+        <span className="absolute bottom-[6%] left-[18%] size-48 rounded-full bg-berry opacity-40 blur-2xl" />
+        <span className="absolute right-[22%] bottom-[12%] size-32 rounded-full bg-mint opacity-50 blur-2xl" />
+      </div>
+      <div className="flex animate-pop-in items-center gap-3">
+        <img src="/favicon.svg" alt="" className="size-14 animate-float" />
         <div>
-          <p className="text-xl font-semibold">{t.app.name}</p>
-          <p className="text-sm text-muted-foreground">{t.app.tagline}</p>
+          <p className="font-display text-3xl font-semibold">{t.app.name}</p>
+          <p className="text-sm font-bold text-muted-foreground">{t.app.tagline}</p>
         </div>
       </div>
-      <Card className="w-full max-w-sm">{children}</Card>
+      <Card className="w-full max-w-sm animate-pop-in [animation-delay:80ms]">{children}</Card>
       <LanguageSelect />
     </main>
   );

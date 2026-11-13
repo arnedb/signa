@@ -17,14 +17,15 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { useGlossLang } from "@/lib/i18n";
 import { Link } from "@tanstack/react-router";
-import { Check, Eye, RotateCcw, Undo2, X } from "lucide-react";
-import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
+import { Check, Eye, PartyPopper, RotateCcw, Undo2, X } from "lucide-react";
+import { type CSSProperties, useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 
 import { ErrorView, Spinner } from "@/components/common";
 import { SignVideo } from "@/components/Video";
 import { Button } from "@/components/ui/button";
 import { Alert, Card } from "@/components/ui/card";
 import { api, difficultQuery, wordsQuery } from "@/lib/api";
+import { cn } from "@/lib/utils";
 
 export interface PracticeSearch {
   year?: number;
@@ -143,8 +144,8 @@ function Session({ words, search }: { words: PracticeWord[]; search: PracticeSea
     <div className="mx-auto flex max-w-2xl flex-col gap-4">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-lg font-semibold">{title(search)}</h1>
-          <p className="text-sm text-muted-foreground" aria-live="polite">
+          <h1 className="font-display text-2xl font-semibold">{title(search)}</h1>
+          <p className="text-sm font-bold text-muted-foreground" aria-live="polite">
             {state.round > 1 && `${t.practice.round(state.round)} · `}
             {t.practice.progress(Math.min(progress + 1, state.cards.length), state.cards.length)}
           </p>
@@ -156,7 +157,7 @@ function Session({ words, search }: { words: PracticeWord[]; search: PracticeSea
         </Button>
       </div>
       <div
-        className="h-1.5 overflow-hidden rounded-full bg-muted"
+        className="h-4 overflow-hidden rounded-full border-2 border-ink bg-card"
         role="progressbar"
         aria-valuemin={0}
         aria-valuemax={state.cards.length}
@@ -164,8 +165,14 @@ function Session({ words, search }: { words: PracticeWord[]; search: PracticeSea
         aria-label={t.practice.progress(progress, state.cards.length)}
       >
         <div
-          className="h-full bg-primary transition-all"
-          style={{ width: `${(progress / state.cards.length) * 100}%` }}
+          className="h-full rounded-full bg-[linear-gradient(90deg,var(--color-tangerine),var(--color-berry),var(--color-grape),var(--color-sky),var(--color-mint))] bg-size-[var(--full)_100%] transition-all duration-500 ease-out"
+          style={
+            {
+              width: `${(progress / state.cards.length) * 100}%`,
+              // Stretch the rainbow over the whole bar, so it fills in rather than squashes.
+              "--full": `${progress > 0 ? (state.cards.length / progress) * 100 : 100}%`,
+            } as CSSProperties
+          }
         />
       </div>
 
@@ -227,17 +234,22 @@ function PracticeCard({
   }, [revealed, card.key]);
 
   return (
-    <Card className="flex flex-col gap-4 p-4 sm:p-6">
-      <p className="text-sm text-muted-foreground">
+    <Card key={card.key} className="flex animate-pop-in flex-col gap-4 p-4 sm:p-6">
+      <p
+        className={cn(
+          "self-start rounded-full border-2 border-ink px-3 py-1 text-xs font-bold text-on-crayon",
+          card.direction === "w2s" ? "bg-sky" : "bg-sun",
+        )}
+      >
         {card.direction === "w2s" ? t.practice.showSign : t.practice.showWord}
       </p>
       <div className="flex min-h-16 items-center justify-center">
         {showWord ? (
-          <p className="text-center text-3xl font-semibold tracking-tight sm:text-4xl" lang={glossLang}>
+          <p className="animate-pop-in text-center font-display text-4xl font-semibold sm:text-5xl" lang={glossLang}>
             {card.word.gloss}
           </p>
         ) : (
-          <p className="text-3xl text-muted-foreground" aria-hidden>
+          <p className="animate-float font-display text-5xl font-bold text-grape" aria-hidden>
             ?
           </p>
         )}
@@ -245,19 +257,19 @@ function PracticeCard({
       {showVideo ? (
         <SignVideo src={card.clip.url} poster={card.clip.thumb_url} label={revealed ? card.word.gloss : undefined} />
       ) : (
-        <div className="flex aspect-[4/3] max-h-[45dvh] w-full items-center justify-center rounded-lg border-2 border-dashed text-muted-foreground">
-          <Eye className="size-10" aria-hidden />
+        <div className="flex aspect-[4/3] max-h-[45dvh] w-full items-center justify-center rounded-lg border-[3px] border-dashed border-grape/60 bg-grape-soft text-grape">
+          <Eye className="size-12 animate-float" aria-hidden />
         </div>
       )}
       {revealed && card.word.notes && <p className="text-sm text-muted-foreground">{card.word.notes}</p>}
 
       {revealed ? (
         <div className="grid grid-cols-2 gap-3">
-          <Button size="xl" variant="outline" onClick={() => onAnswer(false)} className="border-destructive/40">
-            <X aria-hidden className="text-destructive" /> {t.practice.unknown}
+          <Button size="xl" variant="outline" onClick={() => onAnswer(false)} className="bg-berry-soft hover:bg-berry-soft">
+            <X aria-hidden className="text-destructive" strokeWidth={3} /> {t.practice.unknown}
           </Button>
           <Button ref={knownRef} size="xl" variant="success" onClick={() => onAnswer(true)}>
-            <Check aria-hidden /> {t.practice.known}
+            <Check aria-hidden strokeWidth={3} /> {t.practice.known}
           </Button>
         </div>
       ) : (
@@ -266,7 +278,7 @@ function PracticeCard({
         </Button>
       )}
       <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
-        <span className="hidden sm:inline">{t.practice.keys}</span>
+        <span className="hidden font-medium sm:inline">{t.practice.keys}</span>
         <Button variant="ghost" size="sm" onClick={onUndo} disabled={!canUndo}>
           <Undo2 aria-hidden /> {t.practice.undo}
         </Button>
@@ -290,13 +302,25 @@ function Done({
 }) {
   const ref = useRef<HTMLHeadingElement>(null);
   useEffect(() => ref.current?.focus(), []);
+  const ratio = total > 0 ? known / total : 0;
   return (
-    <Card className="flex flex-col gap-5 p-6">
-      <div>
-        <h2 ref={ref} tabIndex={-1} className="text-2xl font-semibold">
-          {t.practice.doneTitle}
-        </h2>
-        <p className="mt-1 text-muted-foreground">{t.practice.doneScore(known, total)}</p>
+    <Card className="relative flex animate-pop-in flex-col gap-5 overflow-hidden p-6">
+      {ratio >= 0.5 && <Confetti />}
+      <div className="flex items-center gap-4">
+        <span
+          className={cn(
+            "sticker flex size-16 shrink-0 items-center justify-center rounded-full text-on-crayon",
+            ratio >= 0.8 ? "bg-mint" : ratio >= 0.5 ? "bg-sun" : "bg-sky",
+          )}
+        >
+          <PartyPopper className="size-8 animate-wiggle" aria-hidden />
+        </span>
+        <div>
+          <h2 ref={ref} tabIndex={-1} className="font-display text-3xl font-semibold">
+            {t.practice.doneTitle}
+          </h2>
+          <p className="mt-1 text-lg font-bold text-muted-foreground">{t.practice.doneScore(known, total)}</p>
+        </div>
       </div>
       {missed.length > 0 && (
         <div>
@@ -307,7 +331,7 @@ function Done({
                 <Link
                   to="/dictionary/$wordId"
                   params={{ wordId: String(c.word.id) }}
-                  className="inline-block rounded-full bg-muted px-3 py-1 text-sm hover:bg-accent"
+                  className="inline-block rounded-full border-2 border-ink bg-berry-soft px-3 py-1 text-sm font-bold transition-colors hover:bg-berry/30"
                 >
                   {c.word.gloss}
                 </Link>
@@ -330,5 +354,28 @@ function Done({
         </Button>
       </div>
     </Card>
+  );
+}
+
+const confettiColours = ["tangerine", "berry", "sun", "sky", "mint", "grape"].map((c) => `var(--color-${c})`);
+
+/** A short burst of paper confetti; purely decorative. */
+function Confetti() {
+  return (
+    <div className="pointer-events-none absolute inset-x-0 top-0 h-64 overflow-hidden" aria-hidden>
+      {Array.from({ length: 28 }, (_, i) => (
+        <span
+          key={i}
+          className="absolute top-0 block rounded-[2px] opacity-0"
+          style={{
+            left: `${(i * 37) % 100}%`,
+            width: i % 3 === 0 ? 6 : 8,
+            height: i % 2 === 0 ? 12 : 8,
+            background: confettiColours[i % confettiColours.length],
+            animation: `confetti-fall ${1.6 + (i % 5) * 0.25}s ease-in ${(i % 7) * 0.08}s 1 both`,
+          }}
+        />
+      ))}
+    </div>
   );
 }

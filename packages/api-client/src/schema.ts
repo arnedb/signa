@@ -294,7 +294,8 @@ export interface paths {
          * List Words
          * @description Published words of the current school, in course order.
          *
-         *     ``with_clip`` keeps only words that have a clip.
+         *     ``with_clip`` keeps only words that have a clip. ``limit`` and ``offset`` page through
+         *     the result; without ``limit`` every matching word is returned.
          */
         get: operations["list_words"];
         put?: never;
@@ -411,6 +412,48 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/words/bulk": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Bulk Update Words
+         * @description Apply the same changes to many words: all of them, or none.
+         *
+         *     Each word gets its own history event, so a change can still be undone word by word.
+         */
+        post: operations["admin_bulk_update_words"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/words/bulk-delete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Bulk Delete Words
+         * @description Delete many words for good: all of them, or none (when one is not in this school).
+         */
+        post: operations["admin_bulk_delete_words"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/words/{word_id}": {
         parameters: {
             query?: never;
@@ -422,7 +465,11 @@ export interface paths {
         get: operations["admin_get_word"];
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * Delete Word
+         * @description Delete a word for good, with its videos, history and practice results.
+         */
+        delete: operations["admin_delete_word"];
         options?: never;
         head?: never;
         /** Update Word */
@@ -1484,6 +1531,8 @@ export interface components {
             items: components["schemas"]["RecordingItem"][];
             /** Year */
             year?: number | null;
+            /** Lesson */
+            lesson?: number | null;
             /** List Number */
             list_number?: string | null;
             /**
@@ -1679,6 +1728,25 @@ export interface components {
             /** Context */
             ctx?: Record<string, never>;
         };
+        /**
+         * WordBulkChanges
+         * @description The fields that make sense to set on many words at once.
+         */
+        WordBulkChanges: {
+            /** Year */
+            year?: number | null;
+            /** Lesson */
+            lesson?: number | null;
+            /** List Number */
+            list_number?: string | null;
+            status?: components["schemas"]["WordStatus"] | null;
+        };
+        /** WordBulkUpdate */
+        WordBulkUpdate: {
+            /** Ids */
+            ids: number[];
+            changes: components["schemas"]["WordBulkChanges"];
+        };
         /** WordCreate */
         WordCreate: {
             /** Gloss */
@@ -1686,7 +1754,7 @@ export interface components {
             /** Year */
             year: number;
             /** Lesson */
-            lesson?: number | null;
+            lesson: number;
             /** List Number */
             list_number?: string | null;
             /**
@@ -1722,6 +1790,11 @@ export interface components {
              */
             at: string;
             user: components["schemas"]["EventUser"] | null;
+        };
+        /** WordIds */
+        WordIds: {
+            /** Ids */
+            ids: number[];
         };
         /** WordOut */
         WordOut: {
@@ -2218,6 +2291,8 @@ export interface operations {
                 q?: string | null;
                 ids?: number[] | null;
                 with_clip?: boolean;
+                limit?: number | null;
+                offset?: number;
             };
             header?: never;
             path?: never;
@@ -2452,6 +2527,70 @@ export interface operations {
             };
         };
     };
+    admin_bulk_update_words: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WordBulkUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminWordOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    admin_bulk_delete_words: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WordIds"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     admin_get_word: {
         parameters: {
             query?: never;
@@ -2471,6 +2610,35 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["AdminWordOut"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    admin_delete_word: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                word_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {

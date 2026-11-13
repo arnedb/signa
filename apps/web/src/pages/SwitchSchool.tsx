@@ -41,14 +41,14 @@ export function SwitchSchoolPage({ search }: { search: SwitchSearch }) {
 
   return (
     <div className="flex min-h-dvh flex-col">
-      <header className="border-b">
+      <header className="border-b-2 border-ink">
         <div className="mx-auto flex h-14 max-w-2xl items-center justify-between gap-4 px-4">
           <Link to={back} className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground">
             <ArrowLeft className="size-4" aria-hidden />
             {t.context.back}
           </Link>
-          <span className="flex items-center gap-2 font-semibold">
-            <img src="/favicon.svg" alt="" className="size-7" />
+          <span className="flex items-center gap-2 font-display text-lg font-semibold">
+            <img src="/favicon.svg" alt="" className="size-8 -rotate-6" />
             {t.app.name}
           </span>
         </div>
@@ -72,7 +72,7 @@ export function SwitchSchoolPage({ search }: { search: SwitchSearch }) {
             const grouped = choices.some((c) => c.group_id !== null);
             return (
               <li key={org.id}>
-                <Card className={cn(org.id === me.org?.id && "border-primary")}>
+                <Card className="overflow-hidden">
                   <CardHeader className={cn(!grouped && "hidden")}>
                     <CardTitle>{org.name}</CardTitle>
                     <CardDescription>
@@ -90,7 +90,7 @@ export function SwitchSchoolPage({ search }: { search: SwitchSearch }) {
                             aria-current={current ? "true" : undefined}
                             aria-label={grouped ? `${org.name} · ${c.label}` : undefined}
                             onClick={() => (current ? void navigate({ to: back }) : select.mutate(c))}
-                            className="flex w-full cursor-pointer items-center justify-between gap-3 px-5 py-4 text-left hover:bg-accent disabled:cursor-wait disabled:opacity-60"
+                            className="group flex w-full cursor-pointer items-center justify-between gap-3 px-5 py-4 text-left transition-colors hover:bg-sun-soft focus-visible:-outline-offset-4 disabled:cursor-wait disabled:opacity-60"
                           >
                             <span className="flex min-w-0 flex-col">
                               <span className={cn("truncate font-medium", !grouped && "text-lg font-semibold")}>{c.label}</span>
@@ -106,7 +106,7 @@ export function SwitchSchoolPage({ search }: { search: SwitchSearch }) {
                                 {t.context.current}
                               </Badge>
                             ) : (
-                              <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+                              <ChevronRight className="size-5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" aria-hidden />
                             )}
                           </button>
                         </li>

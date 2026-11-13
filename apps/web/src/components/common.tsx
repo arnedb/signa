@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
 export function Spinner({ label = t.app.loading, className }: { label?: string; className?: string }) {
   return (
     <div role="status" className={cn("flex items-center gap-2 text-muted-foreground", className)}>
-      <LoaderCircle className="size-4 animate-spin" aria-hidden />
+      <LoaderCircle className="size-5 animate-spin text-primary" aria-hidden />
       <span>{label}</span>
     </div>
   );
@@ -87,7 +87,7 @@ export function CopyButton({ value, label = t.app.copy }: { value: string; label
 export function RecoveryCode({ code }: { code: string }) {
   return (
     <div className="flex flex-wrap items-center gap-3">
-      <code className="rounded-md border bg-muted px-4 py-3 font-mono text-xl tracking-widest select-all">
+      <code className="sticker-sm rounded-md bg-sun-soft px-4 py-3 font-mono text-xl tracking-widest select-all">
         {code}
       </code>
       <CopyButton value={code} />
@@ -98,7 +98,7 @@ export function RecoveryCode({ code }: { code: string }) {
 export function PageTitle({ children, actions }: { children: ReactNode; actions?: ReactNode }) {
   return (
     <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-      <h1 className="text-2xl font-semibold tracking-tight">{children}</h1>
+      <h1 className="squiggle font-display text-3xl font-semibold sm:text-4xl">{children}</h1>
       {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
     </div>
   );

@@ -1,7 +1,7 @@
 import { type DirectionChoice, t } from "@vgt/core";
 import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { Flame, Play } from "lucide-react";
+import { Flame, List, Play, Sparkles } from "lucide-react";
 import { useState } from "react";
 
 import { ErrorView, Field, PageTitle, Spinner } from "@/components/common";
@@ -13,27 +13,39 @@ import { cn } from "@/lib/utils";
 
 type Scope = "year" | "lesson";
 
+const segmentTones = {
+  sky: "bg-sky",
+  mint: "bg-mint",
+  tangerine: "bg-tangerine",
+  grape: "bg-grape",
+  sun: "bg-sun",
+};
+
 function Segmented<T extends string>({
   label,
   value,
   options,
   onChange,
+  tone = "sky",
 }: {
   label: string;
   value: T;
   options: { value: T; label: string }[];
   onChange: (v: T) => void;
+  tone?: keyof typeof segmentTones;
 }) {
   return (
     <fieldset className="flex flex-col gap-1.5">
-      <legend className="mb-1.5 text-sm font-medium">{label}</legend>
-      <div className="flex flex-wrap gap-1 rounded-lg bg-muted p-1">
+      <legend className="mb-1.5 text-sm font-bold">{label}</legend>
+      <div className="grid auto-cols-fr grid-flow-col gap-1 rounded-[1.4rem] border-2 border-ink/80 bg-muted p-1">
         {options.map((o) => (
           <label
             key={o.value}
             className={cn(
-              "flex-1 cursor-pointer rounded-md px-3 py-2 text-center text-sm font-medium whitespace-nowrap transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-ring",
-              value === o.value ? "bg-card shadow-sm" : "text-muted-foreground hover:text-foreground",
+              "flex cursor-pointer items-center justify-center rounded-[1.1rem] border-2 px-2 py-1.5 text-center text-sm leading-tight font-bold text-balance transition-all sm:px-3 has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-ring",
+              value === o.value
+                ? cn("border-ink text-on-crayon", segmentTones[tone])
+                : "border-transparent text-muted-foreground hover:bg-card hover:text-foreground",
             )}
           >
             <input
@@ -98,15 +110,16 @@ export function HomePage() {
         <p className="text-muted-foreground">{t.practice.noWords}</p>
       ) : (
         <div className="grid gap-6 lg:grid-cols-[1fr_20rem]">
-          <Card>
+          <Card className="animate-pop-in">
             <CardHeader>
-              <CardDescription>{t.practice.intro}</CardDescription>
+              <CardDescription className="text-base">{t.practice.intro}</CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col gap-5">
               {years.length > 1 && (
                 <Segmented
                   label={t.practice.year}
                   value={String(year)}
+                  tone="grape"
                   options={years.map((y) => ({ value: String(y.year), label: t.app.year(y.year) }))}
                   onChange={(v) => {
                     setYear(Number(v));
@@ -116,6 +129,7 @@ export function HomePage() {
               )}
               <Segmented<Scope>
                 label={t.practice.what}
+                tone="sky"
                 value={scope}
                 options={[
                   { value: "lesson", label: t.practice.byLesson },
@@ -138,6 +152,7 @@ export function HomePage() {
               )}
               <Segmented<DirectionChoice>
                 label={t.practice.direction}
+                tone="mint"
                 value={direction}
                 options={[
                   { value: "s2w", label: t.practice.s2w },
@@ -148,6 +163,7 @@ export function HomePage() {
               />
               <Segmented
                 label={t.practice.order}
+                tone="sun"
                 value={shuffle ? "shuffle" : "course"}
                 options={[
                   { value: "shuffle", label: t.practice.shuffle },
@@ -155,17 +171,20 @@ export function HomePage() {
                 ]}
                 onChange={(v) => setShuffle(v === "shuffle")}
               />
-              <Button size="lg" onClick={start} disabled={count === 0}>
-                <Play aria-hidden />
+              <Button size="xl" className="mt-2 bg-tangerine text-on-crayon" onClick={start} disabled={count === 0}>
+                <Play aria-hidden className="fill-current" />
                 {t.practice.startCount(count)}
               </Button>
             </CardContent>
           </Card>
 
-          <Card className="h-fit">
+          <Card className="relative h-fit animate-pop-in overflow-hidden bg-berry-soft [animation-delay:80ms]">
+            <Sparkles className="absolute top-3 right-3 size-6 animate-float text-berry" aria-hidden />
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Flame className="size-5 text-warning" aria-hidden />
+                <span className="sticker-sm flex size-9 items-center justify-center rounded-full bg-berry text-white">
+                  <Flame className="size-5" aria-hidden />
+                </span>
                 {t.practice.difficultTitle}
               </CardTitle>
               <CardDescription>{t.practice.difficultIntro}</CardDescription>
@@ -173,8 +192,13 @@ export function HomePage() {
             <CardContent className="flex flex-col gap-3">
               {difficult.data && difficult.data.length > 0 ? (
                 <>
-                  <p className="text-sm">{t.app.words(difficult.data.length)}</p>
+                  <p className="font-display text-3xl font-semibold">{t.app.words(difficult.data.length)}</p>
                   <Button asChild variant="outline">
+                    <Link to="/difficult">
+                      <List aria-hidden /> {t.practice.viewDifficult}
+                    </Link>
+                  </Button>
+                  <Button asChild variant="berry">
                     <Link to="/practice" search={{ difficult: true, direction, shuffle: true }}>
                       {t.practice.practiseDifficult}
                     </Link>

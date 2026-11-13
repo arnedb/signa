@@ -9,7 +9,16 @@ from vgt.jobs import enqueue
 from vgt.models import Clip, JobKind, Word, WordEvent, WordStatus
 from vgt.routers.uploads import save_upload
 from vgt.routers.words import word_query
-from vgt.schemas import AdminWordOut, JobOut, TrimIn, WordCreate, WordEventOut, WordUpdate
+from vgt.schemas import (
+    AdminWordOut,
+    JobOut,
+    TrimIn,
+    WordBulkUpdate,
+    WordCreate,
+    WordEventOut,
+    WordIds,
+    WordUpdate,
+)
 from vgt.services import words as svc
 
 router = APIRouter(prefix="/admin", tags=["admin: words"])
@@ -58,6 +67,53 @@ def create_word(body: WordCreate, ctx: Teacher, db: DB) -> AdminWordOut:
     svc.log(db, word, user, "create", svc.snapshot(word))
     db.commit()
     return svc.admin_word_out(word)
+
+
+@router.post("/words/bulk", response_model=list[AdminWordOut])
+def bulk_update_words(body: WordBulkUpdate, ctx: Teacher, db: DB) -> list[AdminWordOut]:
+    """Apply the same changes to many words: all of them, or none.
+
+    Each word gets its own history event, so a change can still be undone word by word.
+    """
+    changes = body.changes.model_dump(exclude_unset=True)
+    if not changes:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Nothing to change")
+    ids = set(body.ids)
+    words = list(
+        db.scalars(
+            select(Word)
+            .where(Word.org_id == ctx.org.id, Word.id.in_(ids))
+            .options(selectinload(Word.clips))
+        )
+    )
+    if len(words) != len(ids):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Word not found")
+    for word in words:
+        svc.apply_changes(db, word, changes, ctx.user)
+    db.commit()
+    return [svc.admin_word_out(w) for w in sorted(words, key=lambda w: w.id)]
+
+
+@router.post("/words/bulk-delete", status_code=204)
+def bulk_delete_words(body: WordIds, ctx: Teacher, db: DB) -> None:
+    """Delete many words for good: all of them, or none (when one is not in this school)."""
+    ids = set(body.ids)
+    words = list(
+        db.scalars(
+            select(Word)
+            .where(Word.org_id == ctx.org.id, Word.id.in_(ids))
+            .options(selectinload(Word.clips))
+        )
+    )
+    if len(words) != len(ids):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Word not found")
+    svc.delete_words(db, words)
+
+
+@router.delete("/words/{word_id}", status_code=204)
+def delete_word(word_id: int, ctx: Teacher, db: DB) -> None:
+    """Delete a word for good, with its videos, history and practice results."""
+    svc.delete_words(db, [_word(db, ctx, word_id)])
 
 
 @router.get("/words/{word_id}", response_model=AdminWordOut)
