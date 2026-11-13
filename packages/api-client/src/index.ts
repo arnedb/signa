@@ -10,6 +10,8 @@ export type DifficultWord = Schemas["DifficultWordOut"];
 export type AdminWord = Schemas["AdminWordOut"];
 export type Clip = Schemas["ClipOut"];
 export type Catalog = Schemas["Catalog"];
+export type AdminReport = Schemas["AdminReportOut"];
+export type ReportReason = Schemas["ReportIn"]["reason"];
 export type Direction = Schemas["ResultIn"]["direction"];
 
 export class ApiError extends Error {

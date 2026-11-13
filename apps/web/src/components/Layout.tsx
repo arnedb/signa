@@ -1,11 +1,12 @@
 import { t } from "@vgt/core";
-import { useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { Link, Outlet, useNavigate } from "@tanstack/react-router";
 import {
   BookOpen,
   CircleUser,
   Dumbbell,
   Film,
+  Flag,
   School,
   ListChecks,
   LogOut,
@@ -18,7 +19,7 @@ import {
 
 import { ContextSwitcher } from "@/components/ContextSwitcher";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { api, isStaff, meQuery } from "@/lib/api";
+import { api, isStaff, meQuery, unwrap } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 interface NavItem {
@@ -29,6 +30,8 @@ interface NavItem {
   exact?: boolean;
   /** Classes for the item's own colour when it is the current page. */
   tone?: keyof typeof tones;
+  /** A number shown next to the label, e.g. open reports. */
+  count?: number;
 }
 
 /** Each student page has its own crayon colour. */
@@ -176,11 +179,19 @@ function NoSchool() {
 export function AdminLayout() {
   const { data: me } = useSuspenseQuery(meQuery);
   const logout = useLogout();
+  // Same key as the reports page uses, so resolving a report updates the count.
+  const openReports = useQuery({
+    queryKey: ["admin", "reports", "count"],
+    queryFn: () => unwrap(api.GET("/api/v1/admin/reports/count")),
+    enabled: isStaff(me),
+    refetchInterval: 5 * 60_000,
+  });
   const items: NavItem[] = [
     ...(isStaff(me)
       ? [
           { to: "/admin", label: t.admin.words, icon: ListChecks, exact: true },
           { to: "/admin/recordings", label: t.admin.recordings, icon: Film },
+          { to: "/admin/reports", label: t.report.adminTitle, icon: Flag, count: openReports.data },
           { to: "/admin/groups", label: t.admin.groups, icon: Users },
           { to: "/admin/moves", label: t.admin.moves, icon: Shuffle },
         ]
@@ -222,6 +233,11 @@ export function AdminLayout() {
             >
               <item.icon className="size-4" aria-hidden />
               {item.label}
+              {item.count ? (
+                <span className="rounded-full bg-primary px-1.5 text-xs leading-5 text-primary-foreground">
+                  {item.count}
+                </span>
+              ) : null}
             </Link>
           ))}
         </nav>

@@ -21,6 +21,7 @@ import { Check, Eye, PartyPopper, RotateCcw, Undo2, X } from "lucide-react";
 import { type CSSProperties, useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 
 import { ErrorView, Spinner } from "@/components/common";
+import { ReportClipButton } from "@/components/ReportClip";
 import { SignVideo } from "@/components/Video";
 import { Button } from "@/components/ui/button";
 import { Alert, Card } from "@/components/ui/card";
@@ -110,6 +111,8 @@ function Session({ words, search }: { words: PracticeWord[]; search: PracticeSea
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      // Typing in the report dialog must not answer the card.
+      if (e.target instanceof HTMLElement && e.target.closest('[role="dialog"]')) return;
       if (e.target instanceof HTMLElement && e.target.closest("input, textarea, select, button")) {
         if (e.key === " " || e.key === "Enter") return; // let buttons handle their own keys
       }
@@ -279,9 +282,13 @@ function PracticeCard({
       )}
       <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
         <span className="hidden font-medium sm:inline">{t.practice.keys}</span>
-        <Button variant="ghost" size="sm" onClick={onUndo} disabled={!canUndo}>
-          <Undo2 aria-hidden /> {t.practice.undo}
-        </Button>
+        <div className="flex items-center gap-1">
+          {/* Only after the answer is shown: a wrong sign is only clear once you see the word. */}
+          {revealed && <ReportClipButton clipId={card.clip.id} />}
+          <Button variant="ghost" size="sm" onClick={onUndo} disabled={!canUndo}>
+            <Undo2 aria-hidden /> {t.practice.undo}
+          </Button>
+        </div>
       </div>
     </Card>
   );

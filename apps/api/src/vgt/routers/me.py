@@ -7,7 +7,7 @@ from sqlalchemy.orm import selectinload
 
 from vgt.db import utcnow
 from vgt.deps import DB, CurrentUser, Member
-from vgt.models import Direction, GroupEvent, OrgMember, Result, User, Word, WordStatus
+from vgt.models import ClipReport, Direction, GroupEvent, OrgMember, Result, User, Word, WordStatus
 from vgt.routers.auth import active_group
 from vgt.schemas import (
     ContextIn,
@@ -94,6 +94,12 @@ def export(user: CurrentUser, db: DB) -> dict[str, Any]:
         .order_by(Result.at)
     ).all()
     moves = db.scalars(select(GroupEvent).where(GroupEvent.user_id == user.id)).all()
+    reports = db.execute(
+        select(ClipReport, Word.gloss)
+        .join(Word, Word.id == ClipReport.word_id)
+        .where(ClipReport.user_id == user.id)
+        .order_by(ClipReport.id)
+    ).all()
     return {
         "exported_at": utcnow().isoformat(),
         "user": {
@@ -119,6 +125,18 @@ def export(user: CurrentUser, db: DB) -> dict[str, Any]:
                 "at": r.at.isoformat(),
             }
             for r, gloss in results
+        ],
+        "clip_reports": [
+            {
+                "word_id": r.word_id,
+                "word": gloss,
+                "clip_id": r.clip_id,
+                "reason": r.reason.value,
+                "comment": r.comment,
+                "at": r.created_at.isoformat(),
+                "resolved": r.resolved_at is not None,
+            }
+            for r, gloss in reports
         ],
     }
 

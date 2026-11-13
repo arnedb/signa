@@ -257,3 +257,54 @@ test("a teacher splits a recording and labels the parts as new words", async ({ 
     await expect(page.getByRole("link", { name: gloss, exact: true })).toBeVisible();
   }
 });
+
+test("a student reports a problem with a video and a teacher resolves it", async ({ page }, info) => {
+  const comment = `Het einde ontbreekt (${info.project.name} ${Date.now() % 100000})`;
+  await login(page, "student", "demo-student");
+  await page.goto("/dictionary");
+  await page.getByLabel("Zoek een woord").fill("huis");
+  await page.getByRole("link", { name: /huis/ }).click();
+  await expect(page.getByRole("heading", { name: "huis" })).toBeVisible();
+
+  await page.getByRole("button", { name: "Probleem melden" }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByRole("button", { name: "Melding versturen" })).toBeDisabled();
+  await dialog.getByLabel("Einde is fout geknipt").check();
+  await dialog.getByLabel("Opmerking").fill(comment);
+  await dialog.getByRole("button", { name: "Melding versturen" }).click();
+  await expect(dialog.getByText("Bedankt! Je leerkracht bekijkt het.")).toBeVisible();
+  await dialog.getByRole("button", { name: "Sluiten" }).first().click();
+
+  await page.getByRole("button", { name: "Afmelden" }).click();
+  await login(page, "docent", "demo-docent");
+  await page.goto("/admin/reports");
+  const card = page.getByRole("listitem").filter({ hasText: comment });
+  await expect(card).toContainText("huis");
+  await expect(card).toContainText("Einde is fout geknipt");
+  await expect(card).toContainText("student");
+  await card.getByRole("button", { name: "Markeer als opgelost" }).click();
+  await expect(page.getByText(comment)).toHaveCount(0);
+  await page.getByRole("button", { name: "Opgelost", exact: true }).click();
+  await expect(page.getByText(comment)).toBeVisible();
+});
+
+test("the report button appears in practice once the answer is shown", async ({ page, isMobile }) => {
+  test.skip(isMobile, "keyboard flow");
+  await login(page, "student", "demo-student");
+  await page.getByRole("button", { name: /^Start/ }).click();
+  await expect(page.getByRole("button", { name: "Toon antwoord" })).toBeFocused();
+  await expect(page.getByRole("button", { name: "Probleem melden" })).toHaveCount(0);
+  await page.keyboard.press("Space");
+  await page.getByRole("button", { name: "Probleem melden" }).click();
+  const dialog = page.getByRole("dialog");
+  await dialog.getByLabel("Iets anders").check();
+  // Arrow keys in the dialog must not answer the card behind it.
+  await dialog.getByLabel("Opmerking").press("ArrowRight");
+  await dialog.getByRole("button", { name: "Melding versturen" }).click();
+  await expect(dialog.getByText("Beschrijf het probleem.")).toBeVisible();
+  await dialog.getByLabel("Opmerking").fill("Het gebaar is niet goed te zien");
+  await dialog.getByRole("button", { name: "Melding versturen" }).click();
+  await expect(dialog.getByText("Bedankt! Je leerkracht bekijkt het.")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.getByText(/^1 van/)).toBeVisible();
+});
