@@ -132,7 +132,6 @@ export const nl = {
     unknown: "Kende ik niet",
     undo: "Vorige terug",
     keys: "Spatie: toon antwoord · →: kende ik · ←: kende ik niet",
-    replay: "Opnieuw afspelen",
     slow: "Trager",
     normalSpeed: "Normale snelheid",
     stop: "Stoppen",

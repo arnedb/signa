@@ -28,10 +28,14 @@ test("practise a lesson with the keyboard and repeat the missed words", async ({
   await login(page, "student", "demo-student");
   await expect(page.getByRole("heading", { name: "Oefenen" })).toBeVisible();
   await page.getByLabel("Les", { exact: true }).selectOption("1");
+  // A fixed direction: the default ("mixed") picks one at random for each word.
+  await page.getByText("Gebaar → woord").click();
   await page.getByText("Lesvolgorde").click();
   await page.getByRole("button", { name: "Start (13)" }).click();
 
   await expect(page.getByText("1 van 13")).toBeVisible();
+  // The answers are saved when the round is done; wait for that before opening the difficult words.
+  const saved = page.waitForResponse((r) => r.url().endsWith("/api/v1/me/results") && r.request().method() === "POST");
   for (let i = 0; i < 13; i++) {
     await page.keyboard.press("Space");
     await expect(page.getByRole("button", { name: "Kende ik", exact: true })).toBeVisible();
@@ -39,6 +43,7 @@ test("practise a lesson with the keyboard and repeat the missed words", async ({
   }
   await expect(page.getByRole("heading", { name: "Klaar!" })).toBeVisible();
   await expect(page.getByText("Je kende 11 van de 13 woorden.")).toBeVisible();
+  expect((await saved).ok()).toBe(true);
   await page.getByRole("button", { name: "Herhaal de 2 gemiste" }).click();
   await expect(page.getByText("Ronde 2 · 1 van 2")).toBeVisible();
 

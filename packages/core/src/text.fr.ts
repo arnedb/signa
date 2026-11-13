@@ -130,7 +130,6 @@ export const fr: Text = {
     unknown: "Je ne savais pas",
     undo: "Annuler le dernier",
     keys: "Espace : voir la réponse · → : je savais · ← : je ne savais pas",
-    replay: "Rejouer",
     slow: "Plus lent",
     normalSpeed: "Vitesse normale",
     stop: "Arrêter",
