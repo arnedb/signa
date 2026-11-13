@@ -94,6 +94,8 @@ class OrgMember(Base):
     )
     role: Mapped[Role] = mapped_column(_enum(Role), default=Role.student)
     created_at: Mapped[datetime] = mapped_column(default=utcnow)
+    # When the user last chose this school; the most recent one is chosen by default.
+    last_used_at: Mapped[datetime | None]
 
     user: Mapped["User"] = relationship(back_populates="org_memberships")
     org: Mapped[Organisation] = relationship(back_populates="members")

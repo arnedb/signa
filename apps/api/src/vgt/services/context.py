@@ -2,16 +2,20 @@
 
 A user can belong to several organisations, and to several groups within one. The choice is
 stored on the user (``current_org_id``, ``current_group_id``), so it is the same on web and
-mobile. Every request checks it again: when the user lost access, a valid default is chosen.
+mobile, and stays chosen after logging out and in again. Every request checks it again: when
+the user lost access, the school they used most recently (``org_members.last_used_at``) is
+chosen instead.
 """
 
 from dataclasses import dataclass
+from datetime import datetime
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from vgt.db import utcnow
 from vgt.i18n import locale_or_default
-from vgt.models import Group, Organisation, Role, User
+from vgt.models import Group, Organisation, OrgMember, Role, User
 from vgt.schemas import GroupBrief, Me, MyOrg, OrgBrief
 
 
@@ -41,13 +45,33 @@ def user_groups(user: User, org_id: int) -> list[Group]:
     return sorted(groups, key=lambda g: (not g.active, g.year, g.label.lower(), g.id))
 
 
+def mark_used(db: Session, user: User, org_id: int) -> None:
+    """Remember that the user chose this organisation now."""
+    member = db.get(OrgMember, (user.id, org_id))
+    if member is not None:
+        member.last_used_at = utcnow()
+
+
+def _default_org(
+    user: User, orgs: list[tuple[Organisation, Role]]
+) -> tuple[Organisation, Role] | None:
+    """The organisation to work in when none is chosen: the one used last, else one the
+    user has a group in (students always do), else the first by name."""
+    used = {m.org_id: m.last_used_at for m in user.org_memberships}
+
+    def key(pair: tuple[Organisation, Role]) -> tuple[bool, float, bool]:
+        at: datetime | None = used.get(pair[0].id)
+        return (at is None, -at.timestamp() if at else 0.0, not user_groups(user, pair[0].id))
+
+    return min(orgs, key=key) if orgs else None  # min() is stable: ties keep name order
+
+
 def resolve(db: Session, user: User) -> Context:
     """The user's current organisation and group, repaired when no longer valid."""
     orgs = available_orgs(db, user)
     pair = next((p for p in orgs if p[0].id == user.current_org_id), None)
-    if pair is None and orgs:
-        # Prefer an organisation the user has a group in (students always do).
-        pair = next((p for p in orgs if user_groups(user, p[0].id)), orgs[0])
+    if pair is None:
+        pair = _default_org(user, orgs)
     org, role = pair if pair else (None, None)
     group = None
     if org is not None:
@@ -71,6 +95,7 @@ def select_context(db: Session, user: User, org_id: int, group_id: int | None) -
         raise ValueError("You are not a member of this group")
     user.current_org_id = org_id
     user.current_group_id = group_id
+    mark_used(db, user, org_id)
     db.commit()
     return resolve(db, user)
 
