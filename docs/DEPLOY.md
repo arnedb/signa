@@ -166,8 +166,10 @@ To restore a backup: stop the container, copy the backup file over `/data/signa.
 volume (`signa-pro_data`), delete the `signa.db-wal` and `signa.db-shm` files next to it, and start
 the container again.
 
-## Copying PRO data to DEV
+## Never copy PRO data to DEV
 
-Only when needed for testing, and remember that DEV then holds real student accounts: copy a
-PRO backup from volume `signa-pro_data` to `/data/signa.db` in volume `signa-dev_data` while DEV is
-stopped, the same way as a restore.
+DEV is open to anyone with the demo accounts from the README, and the demo superadmin sees
+every school. Real class videos and student accounts therefore stay on PRO: do not copy a PRO
+backup or `/data/media` to DEV, and do not run `signa import-legacy` with real videos on DEV.
+To test with real data, restore a PRO backup into a throwaway container on the server that has
+no Traefik labels, and remove it afterwards.
