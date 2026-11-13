@@ -5,8 +5,8 @@ videos from the old app, a first admin and daily backups (milestone 7 in
 [PLAN.md](PLAN.md)). After this, PRO follows the normal flow in [DEPLOY.md](DEPLOY.md):
 publish a release, it goes out the next night.
 
-Plan about two hours, most of it the video import. Do it on a day without class, so nobody
-uses the old app while you copy its data.
+Plan about two hours, most of it the video import. Do it on a day without class: the old app
+is stopped before the import (step 7), so students have no app until the launch (step 10).
 
 ```mermaid
 flowchart LR
@@ -170,8 +170,17 @@ Log in on `https://signa.arnedb.be` as the superadmin and check *Beheer → Scho
 
 ## 7. Import the old app into PRO
 
-Same as step 2, now on PRO. Make sure nobody adds words in the old manager from now on, or
-those words are not imported.
+Same as step 2, now on PRO.
+
+First stop the old app completely, flashcards and manager. Nobody can change the lexicon
+after this, so PRO gets exactly what is on disk. Its login passwords are also in the `vgt`
+repository's history, so it must not run again on the internet:
+
+```bash
+cd /opt/sites/vgt && docker compose down && cd /opt/sites/signa
+```
+
+`docker compose down` removes only the containers; the `lexicon` folder stays. Then:
 
 ```bash
 pro exec signa mkdir -p /data/legacy
@@ -239,10 +248,9 @@ On a phone and on a laptop:
 
 1. Send each group its invite link. Tell the students that progress from the old app is not
    carried over (it lived only in their browser).
-2. Keep the old app running for a few weeks as a fallback, but stop using its manager.
-3. Later, stop it in `/opt/sites/vgt` (`docker compose down`) and keep the `lexicon` folder as
-   an archive.
-4. Mark milestone 7 as done in [PLAN.md](PLAN.md).
+2. Keep `/opt/sites/vgt/lexicon` as an archive, but do not start the old app again. If PRO has
+   a problem, roll back PRO instead (see [DEPLOY.md → Day to day](DEPLOY.md#day-to-day)).
+3. Mark milestone 7 as done in [PLAN.md](PLAN.md).
 
 ## After the launch
 
