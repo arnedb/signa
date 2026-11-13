@@ -1,4 +1,7 @@
-"""Import the old ``vgt`` app: ``lexicon.db`` (guid, word, year, list_number, video_file) + MP4s."""
+"""Import the old ``vgt`` app: ``lexicon.db`` (guid, word, year, list_number, video_file) + MP4s.
+
+Databases from before year 2 have no ``year`` column: those words are all year 1.
+"""
 
 import json
 import os
@@ -66,18 +69,19 @@ def read_rows(db_path: Path) -> list[LegacyRow]:
         (
             r[0]
             for r in con.execute("SELECT name FROM sqlite_master WHERE type='table'")
-            if {"guid", "word", "year", "list_number", "video_file"}
+            if {"guid", "word", "list_number", "video_file"}
             <= {c[1] for c in con.execute(f"PRAGMA table_info('{r[0]}')")}
         ),
         None,
     )
     if table is None:
-        raise SystemExit("No table with guid, word, year, list_number, video_file found")
+        raise SystemExit("No table with guid, word, list_number, video_file found")
+    has_year = "year" in {c[1] for c in con.execute(f"PRAGMA table_info('{table}')")}
     rows = [
         LegacyRow(
             guid=str(r["guid"]),
             word=(r["word"] or "").strip(),
-            year=int(r["year"] or 1),
+            year=int(r["year"] or 1) if has_year else 1,
             list_number=(str(r["list_number"]).strip() or None)
             if r["list_number"] is not None
             else None,
