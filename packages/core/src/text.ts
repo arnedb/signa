@@ -102,6 +102,7 @@ export const nl = {
     title: "Oefenen",
     intro: "Kies wat je wilt oefenen.",
     year: "Jaar",
+    allYears: "Alle jaren",
     what: "Wat",
     wholeYear: "Heel het jaar",
     byLesson: "Per les",

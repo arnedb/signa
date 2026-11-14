@@ -1,3 +1,4 @@
+import type { Catalog } from "@signa/api-client";
 import { type DirectionChoice, t } from "@signa/core";
 import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
@@ -6,12 +7,46 @@ import { useState } from "react";
 
 import { ErrorView, Field, PageTitle, Spinner } from "@/components/common";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Select } from "@/components/ui/input";
 import { catalogQuery, difficultQuery, meQuery } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 type Scope = "year" | "lesson";
+/** A year, or every year of the catalog together. */
+export type YearChoice = number | "all";
+
+/**
+ * What the practice form selects: the number of words and the search for the practice page.
+ * "All years" always practises whole years: no `year` and no `lesson` in the search.
+ */
+export function practiceSelection(
+  years: Catalog["years"],
+  year: YearChoice | null,
+  scope: Scope,
+  lesson: number | null,
+): { count: number; search: { year?: number; lesson?: number } | null } {
+  if (year === "all") {
+    return { count: years.reduce((a, y) => a + y.count, 0), search: {} };
+  }
+  const yearData = years.find((y) => y.year === year);
+  if (year == null || !yearData) return { count: 0, search: null };
+  if (scope === "year") return { count: yearData.count, search: { year } };
+  const lessonValue = lesson ?? yearData.lessons[0] ?? null;
+  const count = yearData.lists
+    .filter((l) => l.lesson === lessonValue)
+    .reduce((a, l) => a + l.count, 0);
+  return {
+    count,
+    search: lessonValue != null ? { year, lesson: lessonValue } : { year },
+  };
+}
 
 const segmentTones = {
   sky: "bg-sky",
@@ -70,9 +105,12 @@ export function HomePage() {
 
   const groupYear = me?.group?.year;
   const years = catalog.data?.years ?? [];
-  const [yearChoice, setYear] = useState<number | null>(null);
-  const year =
-    yearChoice ?? (years.some((y) => y.year === groupYear) ? groupYear : years[0]?.year) ?? null;
+  const [yearChoice, setYear] = useState<YearChoice | null>(null);
+  const year: YearChoice | null =
+    yearChoice ??
+    (years.some((y) => y.year === groupYear) ? groupYear : years[0]?.year) ??
+    null;
+  const allYears = year === "all";
   const yearData = years.find((y) => y.year === year);
 
   const [scope, setScope] = useState<Scope>("lesson");
@@ -81,21 +119,14 @@ export function HomePage() {
   const [shuffle, setShuffle] = useState(true);
 
   const lessonValue = lesson ?? yearData?.lessons[0] ?? null;
-  const count =
-    scope === "year"
-      ? (yearData?.count ?? 0)
-      : (yearData?.lists.filter((l) => l.lesson === lessonValue).reduce((a, l) => a + l.count, 0) ?? 0);
+  const selection = practiceSelection(years, year, scope, lesson);
+  const count = selection.count;
 
   const start = () => {
-    if (year == null) return;
+    if (!selection.search) return;
     void navigate({
       to: "/practice",
-      search: {
-        year,
-        ...(scope === "lesson" && lessonValue != null ? { lesson: lessonValue } : {}),
-        direction,
-        shuffle,
-      },
+      search: { ...selection.search, direction, shuffle },
     });
   };
 
@@ -105,14 +136,19 @@ export function HomePage() {
       {catalog.isPending ? (
         <Spinner />
       ) : catalog.isError ? (
-        <ErrorView error={catalog.error} onRetry={() => void catalog.refetch()} />
+        <ErrorView
+          error={catalog.error}
+          onRetry={() => void catalog.refetch()}
+        />
       ) : years.length === 0 ? (
         <p className="text-muted-foreground">{t.practice.noWords}</p>
       ) : (
         <div className="grid gap-6 lg:grid-cols-[1fr_20rem]">
           <Card className="animate-pop-in">
             <CardHeader>
-              <CardDescription className="text-base">{t.practice.intro}</CardDescription>
+              <CardDescription className="text-base">
+                {t.practice.intro}
+              </CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col gap-5">
               {years.length > 1 && (
@@ -120,27 +156,39 @@ export function HomePage() {
                   label={t.practice.year}
                   value={String(year)}
                   tone="grape"
-                  options={years.map((y) => ({ value: String(y.year), label: t.app.year(y.year) }))}
+                  options={[
+                    ...years.map((y) => ({
+                      value: String(y.year),
+                      label: t.app.year(y.year),
+                    })),
+                    { value: "all", label: t.practice.allYears },
+                  ]}
                   onChange={(v) => {
-                    setYear(Number(v));
+                    setYear(v === "all" ? "all" : Number(v));
                     setLesson(null);
                   }}
                 />
               )}
-              <Segmented<Scope>
-                label={t.practice.what}
-                tone="sky"
-                value={scope}
-                options={[
-                  { value: "lesson", label: t.practice.byLesson },
-                  { value: "year", label: t.practice.wholeYear },
-                ]}
-                onChange={setScope}
-              />
-              {scope === "lesson" && (
+              {!allYears && (
+                <Segmented<Scope>
+                  label={t.practice.what}
+                  tone="sky"
+                  value={scope}
+                  options={[
+                    { value: "lesson", label: t.practice.byLesson },
+                    { value: "year", label: t.practice.wholeYear },
+                  ]}
+                  onChange={setScope}
+                />
+              )}
+              {!allYears && scope === "lesson" && (
                 <Field label={t.practice.lesson}>
                   {(p) => (
-                    <Select {...p} value={lessonValue ?? ""} onChange={(e) => setLesson(Number(e.target.value))}>
+                    <Select
+                      {...p}
+                      value={lessonValue ?? ""}
+                      onChange={(e) => setLesson(Number(e.target.value))}
+                    >
                       {yearData?.lessons.map((l) => (
                         <option key={l} value={l}>
                           {t.app.lesson(l)}
@@ -171,7 +219,12 @@ export function HomePage() {
                 ]}
                 onChange={(v) => setShuffle(v === "shuffle")}
               />
-              <Button size="xl" className="mt-2 bg-tangerine text-on-crayon" onClick={start} disabled={count === 0}>
+              <Button
+                size="xl"
+                className="mt-2 bg-tangerine text-on-crayon"
+                onClick={start}
+                disabled={count === 0}
+              >
                 <Play aria-hidden className="fill-current" />
                 {t.practice.startCount(count)}
               </Button>
@@ -179,7 +232,10 @@ export function HomePage() {
           </Card>
 
           <Card className="relative h-fit animate-pop-in overflow-hidden bg-berry-soft [animation-delay:80ms]">
-            <Sparkles className="absolute top-3 right-3 size-6 animate-float text-berry" aria-hidden />
+            <Sparkles
+              className="absolute top-3 right-3 size-6 animate-float text-berry"
+              aria-hidden
+            />
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <span className="sticker-sm flex size-9 items-center justify-center rounded-full bg-berry text-white">
@@ -192,20 +248,27 @@ export function HomePage() {
             <CardContent className="flex flex-col gap-3">
               {difficult.data && difficult.data.length > 0 ? (
                 <>
-                  <p className="font-display text-3xl font-semibold">{t.app.words(difficult.data.length)}</p>
+                  <p className="font-display text-3xl font-semibold">
+                    {t.app.words(difficult.data.length)}
+                  </p>
                   <Button asChild variant="outline">
                     <Link to="/difficult">
                       <List aria-hidden /> {t.practice.viewDifficult}
                     </Link>
                   </Button>
                   <Button asChild variant="berry">
-                    <Link to="/practice" search={{ difficult: true, direction, shuffle: true }}>
+                    <Link
+                      to="/practice"
+                      search={{ difficult: true, direction, shuffle: true }}
+                    >
                       {t.practice.practiseDifficult}
                     </Link>
                   </Button>
                 </>
               ) : (
-                <p className="text-sm text-muted-foreground">{t.practice.difficultEmpty}</p>
+                <p className="text-sm text-muted-foreground">
+                  {t.practice.difficultEmpty}
+                </p>
               )}
             </CardContent>
           </Card>

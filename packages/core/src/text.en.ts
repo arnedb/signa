@@ -98,6 +98,7 @@ export const en: Text = {
     title: "Practise",
     intro: "Choose what you want to practise.",
     year: "Year",
+    allYears: "All years",
     what: "What",
     wholeYear: "Whole year",
     byLesson: "By lesson",
