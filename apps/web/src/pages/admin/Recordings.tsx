@@ -2,7 +2,7 @@ import type { AdminWord, Schemas } from "@signa/api-client";
 import { t } from "@signa/core";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { ArrowLeft, Pause, Play, Plus, RefreshCw, Scissors, Trash2, Upload } from "lucide-react";
+import { ArrowLeft, ChevronsLeft, ChevronsRight, Pause, Play, Plus, RefreshCw, Scissors, Trash2, Upload } from "lucide-react";
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 
 import { ErrorView, Field, PageTitle, Spinner } from "@/components/common";
@@ -112,6 +112,31 @@ interface Row extends Segment {
 
 let rowKey = 0;
 const toRows = (segments: Segment[]): Row[] => segments.map((s) => ({ ...s, key: ++rowKey, text: "" }));
+
+/**
+ * Join the segment with ``key`` and its neighbour before (``-1``) or after (``1``) into one
+ * segment from the earliest start to the latest end. It keeps ``key`` and its word, or the
+ * neighbour's word when it has none. Without that neighbour, the rows stay as they are.
+ */
+export function mergeRows<R extends { key: number; start: number; end: number; text: string }>(
+  rows: R[],
+  key: number,
+  direction: -1 | 1,
+): R[] {
+  const i = rows.findIndex((r) => r.key === key);
+  const j = i + direction;
+  if (i < 0 || j < 0 || j >= rows.length) return rows;
+  const row = rows[i]!;
+  const other = rows[j]!;
+  const merged: R = {
+    ...row,
+    start: Math.min(row.start, other.start),
+    end: Math.max(row.end, other.end),
+    text: row.text.trim() ? row.text : other.text,
+  };
+  const first = Math.min(i, j);
+  return [...rows.slice(0, first), merged, ...rows.slice(first + 2)];
+}
 
 type Method = NonNullable<Recording["method"]>;
 
@@ -318,6 +343,10 @@ function Editor({ recording }: { recording: Recording }) {
     },
     [rows],
   );
+  const merge = useCallback((key: number, direction: -1 | 1) => {
+    setRows((rs) => mergeRows(rs, key, direction));
+    setSelectedKey(key);
+  }, []);
   const select = (row: Row) => {
     setSelectedKey(row.key);
     seek(row.start);
@@ -342,6 +371,11 @@ function Editor({ recording }: { recording: Recording }) {
         remove(selectedKey);
         return;
       }
+      if (e.code === "KeyM" && selectedKey != null) {
+        e.preventDefault();
+        merge(selectedKey, e.shiftKey ? -1 : 1);
+        return;
+      }
       switch (e.code) {
         case "Space": e.preventDefault(); toggle(); break;
         case "KeyS": e.preventDefault(); splitAt(); break;
@@ -351,7 +385,7 @@ function Editor({ recording }: { recording: Recording }) {
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [seek, toggle, splitAt, selectedKey, remove]);
+  }, [seek, toggle, splitAt, selectedKey, remove, merge]);
 
   const resolved = rows.map((r) => resolve(r.text));
   const hasNew = resolved.some((r) => r.kind === "new");
@@ -509,6 +543,8 @@ function Editor({ recording }: { recording: Recording }) {
             focus={focusWord.current}
             onChange={(text) => update(selected.key, { text })}
             onRemove={() => remove(selected.key)}
+            onMergePrevious={selectedIndex > 0 ? () => merge(selected.key, -1) : undefined}
+            onMergeNext={selectedIndex < rows.length - 1 ? () => merge(selected.key, 1) : undefined}
             onNext={() => {
               const next = rows[selectedIndex + 1];
               if (!next) return;
@@ -564,6 +600,8 @@ function SegmentRow({
   focus,
   onChange,
   onRemove,
+  onMergePrevious,
+  onMergeNext,
   onNext,
 }: {
   index: number;
@@ -572,6 +610,10 @@ function SegmentRow({
   focus: boolean;
   onChange: (text: string) => void;
   onRemove: () => void;
+  /** Absent on the first segment. */
+  onMergePrevious?: () => void;
+  /** Absent on the last segment. */
+  onMergeNext?: () => void;
   onNext: () => void;
 }) {
   const note =
@@ -600,6 +642,14 @@ function SegmentRow({
             onClick={onRemove}
           >
             <Trash2 aria-hidden /> {t.admin.removeSegment}
+          </Button>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button size="sm" variant="outline" title={`${t.admin.mergePrevious} (Shift+M)`} disabled={!onMergePrevious} onClick={onMergePrevious}>
+            <ChevronsLeft aria-hidden /> {t.admin.mergePrevious}
+          </Button>
+          <Button size="sm" variant="outline" title={`${t.admin.mergeNext} (M)`} disabled={!onMergeNext} onClick={onMergeNext}>
+            {t.admin.mergeNext} <ChevronsRight aria-hidden />
           </Button>
         </div>
         <Field label={t.admin.word} hint={note ?? undefined}>

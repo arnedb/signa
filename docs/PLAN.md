@@ -211,7 +211,7 @@ label and trim videos. Its features now live in `/admin`:
 | Old manager | Here |
 |---|---|
 | Upload a long video, auto-detect the rests between signs (OpenCV motion, 30th percentile) | Recording sessions, split method "rest moments" (`media.detect_motion`). Same idea, measured with ffmpeg so OpenCV is not needed. The threshold sits a little above the quietest 30 %, so a rest is not broken in two by small wobbles. A video that starts or ends while signing keeps its first or last sign |
-| Mark split points with S, undo, click a marker to delete it | Timeline with numbered segments, S to split at the playhead, delete or adjust a segment |
+| Mark split points with S, undo, click a marker to delete it | Timeline with numbered segments, S to split at the playhead, delete or adjust a segment, merge it with the previous or next one (M, Shift+M) |
 | Label each segment with a new word on a year and list; skip words that already exist on that list | "New word" per segment (or for all empty segments at once), on the chosen year and list. A duplicate on the same list is refused, a name on another list is shown as an extra word |
 | Lexicon tab: change a word's name, year or list | Word editor (with history and undo) |
 | Lexicon tab: trim a clip with in/out handles, frame steps and I/O keys | "Trim" on each clip. The trimmed copy is re-encoded with the standard settings, and the original is archived instead of overwritten |
