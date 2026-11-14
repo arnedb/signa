@@ -100,6 +100,7 @@ export const fr: Text = {
     title: "S’exercer",
     intro: "Choisis ce que tu veux exercer.",
     year: "Année",
+    allYears: "Toutes les années",
     what: "Quoi",
     wholeYear: "Toute l’année",
     byLesson: "Par leçon",

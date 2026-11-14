@@ -63,8 +63,9 @@ export function PracticePage({ search }: { search: PracticeSearch }) {
   return <Session words={words.data} search={search} />;
 }
 
-function title(search: PracticeSearch): string {
+export function practiceTitle(search: PracticeSearch): string {
   if (search.difficult) return t.practice.difficultTitle;
+  if (search.year == null && search.lesson == null && !search.list) return t.practice.allYears;
   const parts = [search.year ? t.app.year(search.year) : null];
   if (search.lesson != null) parts.push(t.app.lesson(search.lesson));
   if (search.list) parts.push(t.app.list(search.list));
@@ -147,7 +148,7 @@ function Session({ words, search }: { words: PracticeWord[]; search: PracticeSea
     <div className="mx-auto flex max-w-2xl flex-col gap-4">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="font-display text-2xl font-semibold">{title(search)}</h1>
+          <h1 className="font-display text-2xl font-semibold">{practiceTitle(search)}</h1>
           <p className="text-sm font-bold text-muted-foreground" aria-live="polite">
             {state.round > 1 && `${t.practice.round(state.round)} · `}
             {t.practice.progress(Math.min(progress + 1, state.cards.length), state.cards.length)}

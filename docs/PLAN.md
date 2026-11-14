@@ -136,7 +136,7 @@ jobs         id, org_id, kind (transcode | split), status (queued | running | do
 
 - Join through a group invite link, then log in. Recovery is by a one-time code. A logged-in
   user can make a new recovery code in the profile (the old one stops working).
-- Practise by year, lesson or list, in one direction (word → sign, sign → word) or mixed,
+- Practise by year, lesson or list, or all years together, in one direction (word → sign, sign → word) or mixed,
   optionally with a limited number of words. Answer "Kende ik" / "Kende ik niet", with undo
   for the last answer. At the end, repeat the words you missed.
 - Browse and search the dictionary, with all clips of a word.

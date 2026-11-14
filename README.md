@@ -1,7 +1,7 @@
 # Signa
 
 Signa is a practice tool for students of Flemish Sign Language (Vlaamse Gebarentaal, VGT):
-practise the signs from your course, by year, lesson or list.
+practise the signs from your course, by year, lesson or list, or all years together.
 
 - **Students** join their group with an invite link, practise in both directions
   (word → sign, sign → word) with “Kende ik” / “Kende ik niet”, repeat what they missed,
